@@ -53,6 +53,10 @@
     </div>
 
     <div class="title-foot">
+      <button class="btn-install" id="btn-install-open" hidden>
+        <span class="bi-ico" aria-hidden="true">⬇</span>
+        <span class="bi-txt">オフラインで使えるアプリをインストールする</span>
+      </button>
       <button class="btn-tiny" id="btn-number-only">数字だけ確認する</button>
     </div>
   </section>
@@ -328,6 +332,25 @@
       <p class="num-hint">タップでリストに戻ります</p>
     </div>
   </section>
+
+  <!-- ============ アプリのインストール（APKダウンロード） ============ -->
+  <div class="sheet" id="install-sheet" hidden>
+    <div class="sheet-box">
+      <h2 class="sheet-title">Androidアプリをインストール</h2>
+      <p class="sheet-lead">通信がなくても使えるアプリ版です。ホーム画面のアイコンから起動できます。</p>
+      <ol class="sheet-steps">
+        <li><b>ダウンロード</b>を押す（約4MB）</li>
+        <li>「有害なファイルの可能性」と出たら <b>続行</b> をタップ</li>
+        <li>通知欄またはファイルアプリで <b>ito.apk</b> を開く</li>
+        <li>「不明なアプリのインストール」を許可 →「インストール」</li>
+      </ol>
+      <p class="sheet-note">Playストア経由ではないため「Play Protect によりブロック」と出ることがあります。その場合は「詳細」→「無視してインストール」を選んでください。</p>
+      <div class="sheet-btns">
+        <button class="btn-sub" id="install-close" type="button">閉じる</button>
+        <a class="btn-main" id="install-dl" href="./download/ito.apk" download="ito.apk">ダウンロード</a>
+      </div>
+    </div>
+  </div>
 
   <!-- ============ 共通モーダル / トースト（#app 内に置き、横画面レイアウトに追従） ============ -->
   <div class="modal" id="modal" hidden>

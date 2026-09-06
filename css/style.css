@@ -670,3 +670,73 @@ body.rotated .corner-bl{left:calc(var(--safe-t) + 14px);bottom:calc(var(--safe-l
 
 /* 横画面レイアウト時のトースト位置 */
 body.rotated .toast{bottom:calc(var(--safe-l) + 20px);}
+
+
+/* =========================================================
+   アプリ（APK）のインストール導線
+   ========================================================= */
+.title-foot{
+  flex-direction:column;gap:6px;align-items:center;
+}
+.btn-install{
+  display:inline-flex;align-items:center;justify-content:center;gap:8px;
+  min-height:var(--tap);
+  max-width:100%;padding:0 16px;
+  border-radius:14px;
+  background:var(--panel);
+  border:1px solid var(--accent);
+  color:var(--fg);
+  font-size:13px;font-weight:700;line-height:1.35;
+  text-align:center;
+}
+.btn-install:active{background:var(--accent);color:#fff;transform:scale(.98);}
+.btn-install .bi-ico{
+  flex:0 0 auto;font-size:14px;color:var(--accent);
+}
+.btn-install:active .bi-ico{color:#fff;}
+.btn-install .bi-txt{min-width:0;}
+@media (max-width:360px){
+  .btn-install{font-size:12px;padding:0 12px;}
+}
+
+/* インストール用シート */
+.sheet{
+  position:fixed;inset:0;z-index:55;
+  background:var(--scrim);
+  display:flex;align-items:flex-end;justify-content:center;
+  padding:16px;
+  backdrop-filter:blur(4px);
+}
+.sheet-box{
+  width:100%;max-width:420px;
+  max-height:88%;overflow-y:auto;
+  background:var(--modal-bg);
+  border:1px solid var(--line);
+  border-radius:22px;
+  padding:22px 20px calc(18px + var(--safe-b));
+  box-shadow:0 20px 50px rgba(0,0,0,.5);
+}
+body.rotated .sheet{align-items:center;}
+body.rotated .sheet-box{padding-bottom:18px;}
+.sheet-title{
+  font-size:19px;font-weight:900;margin:0 0 6px;
+}
+.sheet-lead{
+  font-size:13px;color:var(--fg-dim);margin:0 0 14px;line-height:1.7;
+}
+.sheet-steps{
+  margin:0 0 14px;padding-left:1.3em;
+  font-size:14px;line-height:1.9;
+}
+.sheet-steps li{margin-bottom:2px;}
+.sheet-steps b{color:var(--accent);}
+.sheet-note{
+  font-size:12px;color:var(--fg-dim);line-height:1.7;
+  background:var(--panel);border-radius:10px;padding:10px 12px;margin:0 0 16px;
+}
+.sheet-btns{display:flex;gap:10px;}
+.sheet-btns > *{flex:1;min-height:52px;font-size:16px;}
+.sheet-btns .btn-main{
+  display:flex;align-items:center;justify-content:center;
+  text-decoration:none;
+}

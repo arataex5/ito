@@ -3,7 +3,7 @@
    すべて相対パスで登録（サブディレクトリ配置 / APK化に対応）
    ========================================================= */
 /* アプリを更新したら APP_VERSION を上げること（キャッシュが作り直されます） */
-var APP_VERSION = '1.4.0';
+var APP_VERSION = '1.5.0';
 var CACHE = 'ito-cache-' + APP_VERSION;
 var ASSETS = [
   './',
@@ -46,6 +46,8 @@ self.addEventListener('fetch', function (e) {
   if (req.method !== 'GET') return;
   var url = new URL(req.url);
   if (url.origin !== self.location.origin) return;
+  // APK（アプリ本体のダウンロード）はキャッシュせず、そのままネットワークへ
+  if (/\.apk$/i.test(url.pathname)) return;
 
   // HTML / JS / CSS はネットワーク優先（更新をすぐ反映）＋オフライン時はキャッシュ
   var isCode = (req.mode === 'navigate') ||

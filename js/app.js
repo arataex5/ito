@@ -616,6 +616,17 @@
     // タイトル：ダーク / ライト切替
     $('btn-theme').addEventListener('click', toggleTheme);
 
+    // タイトル：アプリ（APK）のインストール
+    $('btn-install-open').addEventListener('click', openInstallSheet);
+    $('install-close').addEventListener('click', closeInstallSheet);
+    $('install-sheet').addEventListener('click', function (ev) {
+      if (ev.target === this) closeInstallSheet();
+    });
+    $('install-dl').addEventListener('click', function () {
+      showToast('ダウンロードを開始しました。通知欄から ito.apk を開いてインストールしてください。', 4200);
+      setTimeout(closeInstallSheet, 600);
+    });
+
     // お題表示：文字サイズの拡大・縮小
     $('disp-zoom-in').addEventListener('click', function () { changeScale(10); });
     $('disp-zoom-out').addEventListener('click', function () { changeScale(-10); });
@@ -819,6 +830,22 @@
     }, { passive: false });
   }
 
+  /* ------------------------- アプリ（APK）のインストール導線 ------------------------- */
+  function initInstallButton() {
+    var btn = $('btn-install-open');
+    if (!btn) return;
+    var ua = navigator.userAgent || '';
+    var isNative = !!(global.Capacitor && (global.Capacitor.isNativePlatform
+      ? global.Capacitor.isNativePlatform() : global.Capacitor.isNative));
+    var isIOS = /iPad|iPhone|iPod/.test(ua) ||
+      (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+    // アプリ版で開いているとき / iOS では表示しない（APKはAndroid専用のため）
+    if (isNative || isIOS) { btn.hidden = true; return; }
+    btn.hidden = false;
+  }
+  function openInstallSheet() { $('install-sheet').hidden = false; }
+  function closeInstallSheet() { $('install-sheet').hidden = true; }
+
   /* ------------------------- 起動 ------------------------- */
   function boot() {
     // 保存済みテーマを初期化前に反映（ちらつき防止）
@@ -830,6 +857,7 @@
     S.init().then(function () {
       applyTheme();
       syncZoomLabel();
+      initInstallButton();
       renderAllPlayerInputs();
       show('title', { resetStack: true });
     }).catch(function (e) {

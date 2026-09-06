@@ -356,7 +356,7 @@
     __v: SETTINGS_VERSION
   };
 
-  var APP_VERSION = '1.4.0';
+  var APP_VERSION = '1.5.0';
 
   var Store = {
     version: APP_VERSION,
