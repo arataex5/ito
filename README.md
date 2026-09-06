@@ -17,7 +17,9 @@ ito-app/
 │   ├── data.js             CSV解析・埋め込みフォールバック・localStorage永続化
 │   └── pwa.js              Service Worker 登録
 ├── data/
-│   └── default_topics.csv  お題マスターデータ（60件）
+│   └── default_topics.csv  お題マスターデータ
+├── tools/
+│   └── embed_csv.py        CSV → data.js 埋め込みデータ 再生成スクリプト
 └── icons/                  アイコン（192 / 512 / maskable / apple-touch）
 ```
 
@@ -46,6 +48,12 @@ python3 -m http.server 8080
 | B | お題 | `食べ物` |
 | C | 評価 | `1:低カロリーな食べ物-100:高カロリーな食べ物` |
 | D | マスターデータ | `1` または `true` → 編集・削除不可 |
+
+### お題データを差し替える手順
+
+1. `data/default_topics.csv` を新しいCSVで上書き（列は上表のとおり。文字コードは UTF-8、BOM付きでも可）。
+2. `python3 tools/embed_csv.py` を実行（`js/data.js` の埋め込みフォールバックが自動更新されます）。
+3. `sw.js` の `APP_VERSION` を上げる（キャッシュを確実に更新するため）。
 
 - 起動時に `fetch('./data/default_topics.csv')` で読み込みます。
 - **fetch に失敗した場合（`file://` 実行、APK のローカルスキーム、タイムアウト等）は `js/data.js` 内の `EMBEDDED_CSV` を自動的に使用**します。CSV を編集したときは `EMBEDDED_CSV` も合わせて更新してください（内容は同一です）。
@@ -76,6 +84,26 @@ npx cap open android                                # Android Studio でビル�
 
 - APK では Service Worker を登録しません（`js/pwa.js` が http(s) 以外ではスキップします）。アセットはローカルから直接読み込まれるため、オフライン動作に影響はありません。
 - 画面の向きは `manifest.json` の `orientation: "any"`＋アプリ内の「⟳」ボタンで切り替えます。Android の向き固定を行う場合は `AndroidManifest.xml` の `android:screenOrientation` を調整してください。
+
+## 更新履歴（v1.2）
+
+- **重要：キャッシュ更新の不具合を修正**しました。旧版は Service Worker がキャッシュ優先で JS/CSS を配信し続けたため、HTML だけ新しく JS が古いままになり「テーマが切り替わらない」「枚数・文字サイズが変わらない」「除外の既定値が反映されない」という症状が出ていました。v1.2 では
+  - キャッシュ名を `ito-cache-<APP_VERSION>` にして、更新時に旧キャッシュを自動削除
+  - HTML / JS / CSS は **ネットワーク優先**（オフライン時のみキャッシュ）に変更
+  - `updateViaCache:'none'` ＋ 起動時 `reg.update()` で新バージョンを即検出し、自動リロード
+  - 設定画面の最下部に **バージョン表示**（`ito app v1.2.0`）を追加。動作中のバージョンをここで確認できます。
+- タイトル画面に **画面の向き切替（⟳）** ボタンを追加。
+- プレイヤー人数を **最大20人** に拡張。
+- 確認ダイアログ／トーストを回転コンテナ内に移動し、**横画面レイアウトに追従**するよう修正。
+- お題リストの見出し（♡ / No. / お題 / 除外）を **各列の真上にぴったり揃うよう** 調整（No. 列は中央寄せに統一）。
+- `tools/embed_csv.py` を追加。CSV を差し替えたあとに実行すると、`js/data.js` の埋め込みフォールバックを自動更新します。
+
+### 更新が反映されないとき
+
+1. 設定画面の最下部でバージョンを確認（`v1.2.0` 以外なら旧版が動作中）。
+2. ブラウザで一度リロード（新しい Service Worker が入ると自動でもう一度リロードされます）。
+3. それでも古い場合：ホーム画面のアイコンを削除 → 再度「ホーム画面に追加」、または Chrome の「サイトの設定 → データを削除」。
+4. 自分でファイルを更新したときは `sw.js` の `APP_VERSION` を上げてください。
 
 ## 更新履歴（v1.1 で追加）
 

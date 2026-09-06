@@ -2,7 +2,9 @@
    sw.js - 完全オフライン対応 Service Worker
    すべて相対パスで登録（サブディレクトリ配置 / APK化に対応）
    ========================================================= */
-var CACHE = 'ito-cache-v1';
+/* アプリを更新したら APP_VERSION を上げること（キャッシュが作り直されます） */
+var APP_VERSION = '1.2.0';
+var CACHE = 'ito-cache-' + APP_VERSION;
 var ASSETS = [
   './',
   './index.html',
@@ -45,15 +47,21 @@ self.addEventListener('fetch', function (e) {
   var url = new URL(req.url);
   if (url.origin !== self.location.origin) return;
 
-  // ナビゲーションは index.html にフォールバック（オフライン起動対応）
-  if (req.mode === 'navigate') {
+  // HTML / JS / CSS はネットワーク優先（更新をすぐ反映）＋オフライン時はキャッシュ
+  var isCode = (req.mode === 'navigate') ||
+               /\.(?:html|js|css)$/i.test(url.pathname) ||
+               url.pathname === '/' || url.pathname.slice(-1) === '/';
+
+  if (isCode) {
     e.respondWith(
       fetch(req).then(function (res) {
-        var copy = res.clone();
-        caches.open(CACHE).then(function (c) { c.put(req, copy); });
+        if (res && res.ok) {
+          var copy = res.clone();
+          caches.open(CACHE).then(function (c) { c.put(req, copy); });
+        }
         return res;
       }).catch(function () {
-        return caches.match(req).then(function (r) {
+        return caches.match(req, { ignoreSearch: true }).then(function (r) {
           return r || caches.match('./index.html');
         });
       })
@@ -61,11 +69,10 @@ self.addEventListener('fetch', function (e) {
     return;
   }
 
-  // それ以外はキャッシュ優先（オフラインで完全動作）
+  // 画像 / CSV などはキャッシュ優先（裏で更新）
   e.respondWith(
     caches.match(req, { ignoreSearch: true }).then(function (cached) {
       if (cached) {
-        // 背景で更新
         fetch(req).then(function (res) {
           if (res && res.ok) caches.open(CACHE).then(function (c) { c.put(req, res.clone()); });
         }).catch(function () {});

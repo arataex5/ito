@@ -181,7 +181,10 @@
     __v: SETTINGS_VERSION
   };
 
+  var APP_VERSION = '1.2.0';
+
   var Store = {
+    version: APP_VERSION,
     topics: [],
     settings: Object.assign({}, DEFAULT_SETTINGS),
     players: { count: 4, names: ['', '', '', ''] },
@@ -399,7 +402,7 @@
       return out;
     },
     setPlayerCount: function (n) {
-      n = Math.max(1, Math.min(12, n));
+      n = Math.max(1, Math.min(20, n));
       this.players.count = n;
       while (this.players.names.length < n) this.players.names.push('');
       this.savePlayers();

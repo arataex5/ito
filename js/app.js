@@ -201,6 +201,8 @@
     $('set-favorite-only').checked = !!S.settings.favoriteOnly;
     $('set-use-exclusion').checked = !!S.settings.useExclusion;
     updatePoolInfo();
+    var v = $('version-info');
+    if (v) v.textContent = 'ito app v' + (S.version || '-') + '　/　お題データ：' + (S.csvSource === 'csv' ? 'CSV読込' : '内蔵データ');
   };
   function updatePoolInfo() {
     var n = S.pool().length;
@@ -807,6 +809,11 @@
 
   /* ------------------------- 起動 ------------------------- */
   function boot() {
+    // 保存済みテーマを初期化前に反映（ちらつき防止）
+    try {
+      var raw = window.localStorage.getItem('ito.settings.v1');
+      if (raw && JSON.parse(raw).theme === 'light') document.body.classList.add('light');
+    } catch (e) {}
     bind();
     S.init().then(function () {
       applyTheme();
