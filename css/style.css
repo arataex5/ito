@@ -14,10 +14,12 @@
   --gold:#ffd166;
   --danger:#ff5d6c;
   --tap:44px;
-  --safe-t:env(safe-area-inset-top,0px);
-  --safe-b:env(safe-area-inset-bottom,0px);
-  --safe-l:env(safe-area-inset-left,0px);
-  --safe-r:env(safe-area-inset-right,0px);
+  /* セーフエリア：ブラウザの env() と、Capacitor(APK)が注入する
+     --safe-area-inset-* の大きい方を採用する */
+  --safe-t:max(env(safe-area-inset-top,0px), var(--safe-area-inset-top,0px));
+  --safe-b:max(env(safe-area-inset-bottom,0px), var(--safe-area-inset-bottom,0px));
+  --safe-l:max(env(safe-area-inset-left,0px), var(--safe-area-inset-left,0px));
+  --safe-r:max(env(safe-area-inset-right,0px), var(--safe-area-inset-right,0px));
   --radius:16px;
 
   /* テーマ依存の色（body.light で上書き） */
@@ -121,9 +123,14 @@ body.rotated #app{
   position:absolute;inset:0;
   display:none;
   flex-direction:column;
-  padding:calc(var(--safe-t) + 6px) calc(var(--safe-r) + 12px) calc(var(--safe-b) + 6px) calc(var(--safe-l) + 12px);
+  padding:calc(var(--safe-t) + 10px) calc(var(--safe-r) + 12px) calc(var(--safe-b) + 10px) calc(var(--safe-l) + 12px);
 }
-body.rotated .screen{padding:10px 14px;}
+/* 横画面レイアウト（90°回転）では、画面の上下左右が入れ替わる。
+   回転後の 上=物理右 / 右=物理下 / 下=物理左 / 左=物理上 に対応させる */
+body.rotated .screen{
+  padding:calc(var(--safe-r) + 10px) calc(var(--safe-b) + 14px)
+          calc(var(--safe-l) + 10px) calc(var(--safe-t) + 14px);
+}
 .screen.active{display:flex;}
 .screen.dark{background:var(--screen-dark);}
 
@@ -352,8 +359,8 @@ body.rotated .screen{padding:10px 14px;}
 }
 @keyframes mq-scroll{
   0%{transform:translateX(0);}
-  8%{transform:translateX(0);}
-  92%{transform:translateX(calc(-1 * var(--mq-dist,0px)));}
+  5%{transform:translateX(0);}
+  95%{transform:translateX(calc(-1 * var(--mq-dist,0px)));}
   100%{transform:translateX(calc(-1 * var(--mq-dist,0px)));}
 }
 @media (prefers-reduced-motion:reduce){
@@ -451,6 +458,7 @@ body.rotated .screen{padding:10px 14px;}
 .topic-text{
   flex:1 1 auto;min-height:0;
   overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;
+  scrollbar-width:none;
   display:flex;flex-direction:column;justify-content:center;align-items:stretch;
   width:100%;
   text-align:center;
@@ -459,6 +467,7 @@ body.rotated .screen{padding:10px 14px;}
   max-width:100%;
 }
 /* 10文字ごとの行。画面幅に収まらない場合はその行の中で折り返して中央寄せ */
+.topic-text::-webkit-scrollbar{display:none;}
 .topic-text .tline{
   display:block;width:100%;
   white-space:normal;
@@ -487,7 +496,7 @@ body.rotated .screen{padding:10px 14px;}
   position:absolute;right:calc(var(--safe-r) + 14px);bottom:calc(var(--safe-b) + 12px);
   display:flex;flex-direction:column;gap:8px;align-items:flex-end;
 }
-body.rotated .corner-br{right:14px;bottom:12px;}
+body.rotated .corner-br{right:calc(var(--safe-b) + 14px);bottom:calc(var(--safe-l) + 12px);}
 .btn-corner{
   min-height:var(--tap);padding:0 16px;border-radius:14px;
   background:var(--corner-bg);border:1px solid var(--line);
@@ -626,7 +635,7 @@ body.rotated .players-panel{max-height:40%;}
   position:absolute;left:calc(var(--safe-l) + 14px);bottom:calc(var(--safe-b) + 12px);
   display:flex;align-items:center;gap:8px;
 }
-body.rotated .corner-bl{left:14px;bottom:12px;}
+body.rotated .corner-bl{left:calc(var(--safe-t) + 14px);bottom:calc(var(--safe-l) + 12px);}
 .btn-zoom{
   width:var(--tap);height:var(--tap);border-radius:14px;
   background:var(--corner-bg);border:1px solid var(--line);
@@ -660,4 +669,4 @@ body.rotated .corner-bl{left:14px;bottom:12px;}
 .players-panel{max-height:42vh;}
 
 /* 横画面レイアウト時のトースト位置 */
-body.rotated .toast{bottom:20px;}
+body.rotated .toast{bottom:calc(var(--safe-l) + 20px);}

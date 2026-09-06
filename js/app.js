@@ -73,7 +73,7 @@
         var dist = inner.scrollWidth - wrap.clientWidth;
         if (dist > 6) {
           wrap.style.setProperty('--mq-dist', dist + 'px');
-          wrap.style.setProperty('--mq-dur', Math.max(6, Math.round(dist / 18) + 5) + 's');
+          wrap.style.setProperty('--mq-dur', Math.max(3, Math.round(dist / 45) + 2) + 's');
           wrap.classList.add('run');
         } else {
           wrap.classList.remove('run');
