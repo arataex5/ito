@@ -6,7 +6,10 @@
 (function () {
   'use strict';
   var proto = location.protocol;
-  var canSW = ('serviceWorker' in navigator) && (proto === 'http:' || proto === 'https:');
+  // Capacitor（APK）で動作している場合は Service Worker を使わない
+  var isNative = !!(window.Capacitor && (window.Capacitor.isNativePlatform
+    ? window.Capacitor.isNativePlatform() : window.Capacitor.isNative));
+  var canSW = !isNative && ('serviceWorker' in navigator) && (proto === 'http:' || proto === 'https:');
   if (!canSW) return;
 
   window.addEventListener('load', function () {

@@ -106,24 +106,23 @@
   }
   function fitTopicText(elm, maxLen) {
     requestAnimationFrame(function () {
-      var box = elm.parentElement || elm;
-      var w = elm.clientWidth || box.clientWidth;
+      var w = elm.clientWidth || (elm.parentElement && elm.parentElement.clientWidth) || 0;
       if (!w) return;
-      var size = Math.min(46, (w - 8) / (maxLen * 1.06));
-      size = Math.max(16, Math.floor(size));
+      // 10文字の行が横幅に収まるサイズを基準にする
+      var size = Math.min(46, (w - 6) / (maxLen * 1.05));
+      size = Math.max(14, Math.floor(size));
       elm.style.fontSize = size + 'px';
-      // 高さがはみ出す場合は収まるまで縮小（横画面・小型端末対策）
+      // 縦にはみ出す場合は収まるまで縮小（横画面・小型端末・行数が多い場合）
       var guard = 0;
-      while (elm.scrollHeight > elm.clientHeight + 1 && size > 16 && guard < 40) {
-        size -= 2; guard++;
+      while (elm.scrollHeight > elm.clientHeight + 1 && size > 14 && guard < 40) {
+        size -= 1; guard++;
         elm.style.fontSize = size + 'px';
       }
       // ユーザー指定の拡大率（50〜200%）を反映
       var scale = Math.max(50, Math.min(200, S.settings.textScale || 100));
-      var finalSize = Math.max(12, Math.round(size * scale / 100));
-      elm.style.fontSize = finalSize + 'px';
+      elm.style.fontSize = Math.max(10, Math.round(size * scale / 100)) + 'px';
+      // 拡大で縦にあふれる場合のみ上寄せ（横方向は行内で折り返すため常に中央）
       elm.style.justifyContent = (elm.scrollHeight > elm.clientHeight + 1) ? 'flex-start' : 'center';
-      elm.style.alignItems = (elm.scrollWidth > elm.clientWidth + 1) ? 'flex-start' : 'center';
     });
   }
 
@@ -794,6 +793,19 @@
     window.addEventListener('orientationchange', function () {
       setTimeout(function () { applyMarquee(); refitDisplay(); }, 300);
     });
+
+    // Android の「戻る」ボタン（Capacitor / APK）に対応
+    try {
+      var CapApp = window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.App;
+      if (CapApp && CapApp.addListener) {
+        CapApp.addListener('backButton', function () {
+          if (!$('modal').hidden) { closeModal(); return; }
+          if (!$('forgot-reveal').hidden) { $('forgot-reveal').hidden = true; return; }
+          if (nav.current && nav.current !== 'title') { goBack(); return; }
+          if (CapApp.exitApp) CapApp.exitApp();
+        });
+      }
+    } catch (e) { /* Web では何もしない */ }
 
     // iOS のピンチ/ダブルタップズーム抑止
     ['gesturestart', 'gesturechange', 'gestureend'].forEach(function (e) {

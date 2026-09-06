@@ -17,7 +17,7 @@ ito-app/
 │   ├── data.js             CSV解析・埋め込みフォールバック・localStorage永続化
 │   └── pwa.js              Service Worker 登録
 ├── data/
-│   └── default_topics.csv  お題マスターデータ
+│   └── default_topics.csv  お題マスターデータ（232件）
 ├── tools/
 │   └── embed_csv.py        CSV → data.js 埋め込みデータ 再生成スクリプト
 └── icons/                  アイコン（192 / 512 / maskable / apple-touch）
@@ -59,61 +59,170 @@ python3 -m http.server 8080
 - **fetch に失敗した場合（`file://` 実行、APK のローカルスキーム、タイムアウト等）は `js/data.js` 内の `EMBEDDED_CSV` を自動的に使用**します。CSV を編集したときは `EMBEDDED_CSV` も合わせて更新してください（内容は同一です）。
 - マスターデータはアプリ側から編集・削除できません。ユーザーが追加したお題のみ編集・削除でき、削除時は No. を自動で詰めます。
 
-## Android APK 化（Capacitor）
+## Android APK 化（Capacitor）手順
 
-```bash
-npm init -y
-npm i @capacitor/core @capacitor/cli @capacitor/android
-npx cap init ito com.example.ito --web-dir=.        # ito-app 直下で実行
-npx cap add android
-npx cap copy
-npx cap open android                                # Android Studio でビルド
+Web版（このフォルダ）をそのまま Android アプリとして包む方法です。所要時間は初回で 1〜2 時間程度（大半は Android Studio のインストール）。
+
+### 0. 事前に用意するもの
+
+| 必要なもの | 補足 |
+|---|---|
+| Node.js 18 以上 | https://nodejs.org （LTS版） |
+| JDK 17 | Android Studio に同梱のものでOK |
+| Android Studio | https://developer.android.com/studio |
+| Android SDK | Android Studio の SDK Manager で「Android 14 (API 34)」以上＋「Android SDK Build-Tools」「Android SDK Platform-Tools」を入れる |
+
+環境変数（Windows はシステム環境変数、mac は `~/.zshrc`）:
+
+```
+ANDROID_HOME = C:\Users\<ユーザー名>\AppData\Local\Android\Sdk   （mac: ~/Library/Android/sdk）
+PATH に %ANDROID_HOME%\platform-tools を追加
 ```
 
-`capacitor.config.json` の例：
+### 1. プロジェクトを作る
+
+```bash
+mkdir ito-android && cd ito-android
+npm init -y
+npm i @capacitor/core
+npm i -D @capacitor/cli
+npx cap init "ito" "com.example.ito" --web-dir=www
+```
+
+- `"ito"` … アプリ名（ホーム画面に出る名前）
+- `com.example.ito` … アプリID。自分のドメイン逆順が理想（例 `jp.arata.ito`）。**一度公開すると変更できません。**
+
+### 2. Web資産を配置
+
+`ito-app/` の中身（index.html, css/, js/, data/, icons/, manifest.json, sw.js）を、作成した `ito-android/www/` の直下にコピーします。
+
+```
+ito-android/
+├── package.json
+├── capacitor.config.json
+└── www/
+    ├── index.html
+    ├── css/ js/ data/ icons/
+    └── manifest.json, sw.js
+```
+
+`capacitor.config.json` は次のようにします。
 
 ```json
 {
   "appId": "com.example.ito",
   "appName": "ito",
-  "webDir": ".",
-  "android": { "allowMixedContent": false },
-  "server": { "androidScheme": "https" }
+  "webDir": "www",
+  "server": { "androidScheme": "https" },
+  "android": { "allowMixedContent": false, "backgroundColor": "#0d0f1e" }
 }
 ```
 
-- APK では Service Worker を登録しません（`js/pwa.js` が http(s) 以外ではスキップします）。アセットはローカルから直接読み込まれるため、オフライン動作に影響はありません。
-- 画面の向きは `manifest.json` の `orientation: "any"`＋アプリ内の「⟳」ボタンで切り替えます。Android の向き固定を行う場合は `AndroidManifest.xml` の `android:screenOrientation` を調整してください。
+### 3. Android プロジェクトを追加
 
-## 更新履歴（v1.2）
+```bash
+npm i @capacitor/android
+npx cap add android
+npx cap sync android
+```
 
-- **重要：キャッシュ更新の不具合を修正**しました。旧版は Service Worker がキャッシュ優先で JS/CSS を配信し続けたため、HTML だけ新しく JS が古いままになり「テーマが切り替わらない」「枚数・文字サイズが変わらない」「除外の既定値が反映されない」という症状が出ていました。v1.2 では
-  - キャッシュ名を `ito-cache-<APP_VERSION>` にして、更新時に旧キャッシュを自動削除
-  - HTML / JS / CSS は **ネットワーク優先**（オフライン時のみキャッシュ）に変更
-  - `updateViaCache:'none'` ＋ 起動時 `reg.update()` で新バージョンを即検出し、自動リロード
-  - 設定画面の最下部に **バージョン表示**（`ito app v1.2.0`）を追加。動作中のバージョンをここで確認できます。
-- タイトル画面に **画面の向き切替（⟳）** ボタンを追加。
-- プレイヤー人数を **最大20人** に拡張。
-- 確認ダイアログ／トーストを回転コンテナ内に移動し、**横画面レイアウトに追従**するよう修正。
-- お題リストの見出し（♡ / No. / お題 / 除外）を **各列の真上にぴったり揃うよう** 調整（No. 列は中央寄せに統一）。
-- `tools/embed_csv.py` を追加。CSV を差し替えたあとに実行すると、`js/data.js` の埋め込みフォールバックを自動更新します。
+- 以降、`www/` を編集したら毎回 `npx cap sync android`（またはコピーだけなら `npx cap copy android`）を実行してください。
+- 任意ですが、Androidの「戻る」ボタンをアプリ内の戻る操作にしたい場合は `npm i @capacitor/app` を入れてから `npx cap sync android`。本アプリは同プラグインがあれば自動で連携します（無ければ何もしません）。
 
-### 更新が反映されないとき
+### 4. アイコンとスプラッシュを作る（任意）
 
-1. 設定画面の最下部でバージョンを確認（`v1.2.0` 以外なら旧版が動作中）。
-2. ブラウザで一度リロード（新しい Service Worker が入ると自動でもう一度リロードされます）。
-3. それでも古い場合：ホーム画面のアイコンを削除 → 再度「ホーム画面に追加」、または Chrome の「サイトの設定 → データを削除」。
-4. 自分でファイルを更新したときは `sw.js` の `APP_VERSION` を上げてください。
+```bash
+npm i -D @capacitor/assets
+mkdir assets
+# assets/icon.png（1024×1024）、assets/splash.png（2732×2732）を置く
+npx capacitor-assets generate --android
+```
 
-## 更新履歴（v1.1 で追加）
+`ito-app/icons/icon-512.png` を拡大して使ってもかまいません。
 
-1. **ダーク／ライトモード切替**：タイトル左上のボタン。ダーク時は「☀ ライトモード」、ライト時は「🌙 ダークモード」と表示が入れ替わります。選択は `localStorage` に保存され、`theme-color` も追従します。
-2. **一人当たりの枚数（1〜5、既定1）**：設定「お題の抽出数」の下。値を増やすと1人に複数の数字が配られます（全員分が重複しないよう割り当て）。数字確認・数字忘れちゃったの両画面で複数表示に対応。
-3. **お題の文字サイズ（50%〜200%、既定100%）**：お題表示画面 左下の「−／＋」ボタン、または設定の一番下の項目。両者は同じ値を共有し保存されます。100%は従来どおり画面幅にフィットするサイズです。
-4. **お題リストの列見出し**：リスト上部に「♡ / No. / お題 / 除外」の見出し行を追加。
-5. **履歴の「全削除」**：履歴画面 右上（確認ダイアログあり）。
-6. **履歴の複数選択**：項目をタップでオン／オフ。🗑 は選択分をポップアップなしで削除、「表示する」は1件だけ選択時に有効。
-7. **「使用したお題を除外する」が既定でON**。旧バージョンの設定が保存されている場合も、初回起動時に自動でONへ移行します（設定のバージョン `__v` で判定）。
+### 5. デバッグAPKを作る（実機で試す用）
+
+Android Studio から:
+
+```bash
+npx cap open android
+```
+
+→ Android Studio が開いたら **Build ▸ Build Bundle(s) / APK(s) ▸ Build APK(s)**
+→ 完成物: `android/app/build/outputs/apk/debug/app-debug.apk`
+
+コマンドラインだけで作る場合:
+
+```bash
+cd android
+./gradlew assembleDebug        # Windows は gradlew.bat assembleDebug
+```
+
+APKをスマホにコピーして開き、「提供元不明のアプリ」を許可すればインストールできます。USB接続なら `adb install -r app-debug.apk` でも可。
+
+### 6. リリース用（署名付き）APKを作る
+
+1) 署名鍵を作成（**このファイルとパスワードは必ず保管**。紛失するとアプリを更新できません）
+
+```bash
+keytool -genkey -v -keystore ito-release.keystore -alias ito -keyalg RSA -keysize 2048 -validity 10000
+```
+
+2) `android/key.properties` を作成
+
+```
+storePassword=<作成時のパスワード>
+keyPassword=<作成時のパスワード>
+keyAlias=ito
+storeFile=../../ito-release.keystore
+```
+
+3) `android/app/build.gradle` に追記
+
+```gradle
+def keystoreProperties = new Properties()
+def keystorePropertiesFile = rootProject.file("key.properties")
+if (keystorePropertiesFile.exists()) {
+    keystoreProperties.load(new FileInputStream(keystorePropertiesFile))
+}
+
+android {
+    signingConfigs {
+        release {
+            keyAlias keystoreProperties['keyAlias']
+            keyPassword keystoreProperties['keyPassword']
+            storeFile file(keystoreProperties['storeFile'])
+            storePassword keystoreProperties['storePassword']
+        }
+    }
+    buildTypes {
+        release {
+            signingConfig signingConfigs.release
+            minifyEnabled false
+        }
+    }
+}
+```
+
+4) ビルド
+
+```bash
+cd android
+./gradlew assembleRelease      # → app/build/outputs/apk/release/app-release.apk
+./gradlew bundleRelease        # Google Play 用の .aab が必要な場合
+```
+
+### 7. APK化にあたっての本アプリの挙動
+
+- **Service Worker は自動で無効**になります（Capacitor 実行を検知）。アセットは端末内から直接読まれるため、オフライン動作に影響はありません。
+- お題データは `https://localhost` スキームで配信されるため通常は CSV を `fetch` できます。読めない環境でも `js/data.js` の埋め込みデータへ自動フォールバックします。
+- 追加・編集したお題、設定、履歴は `localStorage` に保存され、アプリを再起動しても残ります（アプリのデータ削除・アンインストールで消えます）。
+- 画面の向きは自由。固定したい場合は `android/app/src/main/AndroidManifest.xml` の `<activity>` に `android:screenOrientation="portrait"` を追加。
+- ステータスバーの色を変えたい場合は `npm i @capacitor/status-bar`。
+
+### 補足：もっと手軽な方法（PWA配布）
+
+APKを作らず、GitHub Pages や Netlify に `ito-app/` をそのまま置き、スマホのブラウザで開いて「ホーム画面に追加」でも、全画面・オフラインで同じように動きます。まず試すならこちらが最短です。
 
 ## 主な操作
 

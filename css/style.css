@@ -449,15 +449,22 @@ body.rotated .screen{padding:10px 14px;}
 }
 .topic-no{font-size:12px;color:var(--fg-dim);font-weight:800;letter-spacing:.1em;}
 .topic-text{
-  flex:1 1 auto;min-height:0;overflow:auto;-webkit-overflow-scrolling:touch;
-  display:flex;flex-direction:column;justify-content:center;align-items:center;
+  flex:1 1 auto;min-height:0;
+  overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;
+  display:flex;flex-direction:column;justify-content:center;align-items:stretch;
   width:100%;
   text-align:center;
   font-size:clamp(24px,8vw,46px); /* JSで1行が収まるよう再計算 */
   font-weight:900;line-height:1.35;letter-spacing:.02em;
   max-width:100%;
 }
-.topic-text .tline{display:block;white-space:nowrap;width:max-content;max-width:none;}
+/* 10文字ごとの行。画面幅に収まらない場合はその行の中で折り返して中央寄せ */
+.topic-text .tline{
+  display:block;width:100%;
+  white-space:normal;
+  overflow-wrap:anywhere;word-break:break-word;
+  text-align:center;
+}
 .scale{
   flex:0 0 auto;
   width:100%;max-width:420px;
