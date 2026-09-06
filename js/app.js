@@ -28,8 +28,23 @@
     listFilter: 'all',    // 'all' | 'fav' | 'ex'
     listQuery: '',
     listSelected: null,
-    historySelected: null
+    historySelected: []   // 履歴は複数選択
   };
+
+  /* ------------------------- テーマ（ダーク / ライト） ------------------------- */
+  function applyTheme() {
+    var light = (S.settings.theme === 'light');
+    document.body.classList.toggle('light', light);
+    var btn = $('btn-theme');
+    if (btn) btn.textContent = light ? '🌙 ダークモード' : '☀ ライトモード';
+    var meta = document.querySelector('meta[name="theme-color"]');
+    if (meta) meta.setAttribute('content', light ? '#f5f6fc' : '#0d0f1e');
+  }
+  function toggleTheme() {
+    S.settings.theme = (S.settings.theme === 'light') ? 'dark' : 'light';
+    S.saveSettings();
+    applyTheme();
+  }
 
   /* ------------------------- 汎用UI ------------------------- */
   function showToast(msg, ms) {
@@ -103,6 +118,12 @@
         size -= 2; guard++;
         elm.style.fontSize = size + 'px';
       }
+      // ユーザー指定の拡大率（50〜200%）を反映
+      var scale = Math.max(50, Math.min(200, S.settings.textScale || 100));
+      var finalSize = Math.max(12, Math.round(size * scale / 100));
+      elm.style.fontSize = finalSize + 'px';
+      elm.style.justifyContent = (elm.scrollHeight > elm.clientHeight + 1) ? 'flex-start' : 'center';
+      elm.style.alignItems = (elm.scrollWidth > elm.clientWidth + 1) ? 'flex-start' : 'center';
     });
   }
 
@@ -172,6 +193,8 @@
   /* ------------------------- 設定 ------------------------- */
   onEnter.settings = function () {
     $('set-pick-count').textContent = S.settings.pickCount;
+    $('set-cards').textContent = S.settings.cardsPerPlayer;
+    $('set-scale').textContent = S.settings.textScale + '%';
     $('set-num-min').value = S.settings.numMin;
     $('set-num-max').value = S.settings.numMax;
     $('set-exclude-used').checked = !!S.settings.excludeUsed;
@@ -331,13 +354,13 @@
   }
 
   /* ------------------------- 履歴 ------------------------- */
-  onEnter.history = function () { ui.historySelected = null; renderHistory(); };
+  onEnter.history = function () { ui.historySelected = []; renderHistory(); };
   function renderHistory() {
     var ul = $('history-list');
     ul.innerHTML = '';
     if (!S.history.length) {
       ul.innerHTML = '<li class="empty-note">まだ使用したお題はありません</li>';
-      $('btn-history-show').disabled = true;
+      updateHistoryButtons();
       return;
     }
     S.history.slice().reverse().forEach(function (h, ri) {
@@ -347,24 +370,33 @@
       var tm = (d.getMonth() + 1) + '/' + d.getDate() + ' ' +
         ('0' + d.getHours()).slice(-2) + ':' + ('0' + d.getMinutes()).slice(-2);
       var li = document.createElement('li');
-      li.className = 'li' + (ui.historySelected === id ? ' sel' : '');
+      li.className = 'li' + (ui.historySelected.indexOf(id) > -1 ? ' sel' : '');
       li.dataset.hid = id;
       li.innerHTML =
+        '<span class="li-pick"></span>' +
         '<span class="li-no">' + (i + 1) + '</span>' +
         '<div class="li-main">' +
           '<div class="mq"><span class="mq-in">' + esc(h.text) + '</span></div>' +
           '<div class="li-sub">' + tm + '　1:' + esc(h.low) + ' → 100:' + esc(h.high) + '</div>' +
         '</div>';
       li.addEventListener('click', function () {
-        ui.historySelected = (ui.historySelected === id) ? null : id;
-        $$('#history-list .li').forEach(function (x) { x.classList.remove('sel'); });
-        if (ui.historySelected) li.classList.add('sel');
-        $('btn-history-show').disabled = !ui.historySelected;
+        var k = ui.historySelected.indexOf(id);
+        if (k > -1) ui.historySelected.splice(k, 1);
+        else ui.historySelected.push(id);
+        li.classList.toggle('sel', ui.historySelected.indexOf(id) > -1);
+        updateHistoryButtons();
       });
       ul.appendChild(li);
     });
     applyMarquee(ul);
-    $('btn-history-show').disabled = !ui.historySelected;
+    updateHistoryButtons();
+  }
+  function updateHistoryButtons() {
+    var n = ui.historySelected.length;
+    var btn = $('btn-history-show');
+    btn.disabled = (n !== 1);
+    btn.textContent = (n > 1) ? '表示する（1件だけ選択）' : '表示する';
+    $('btn-history-clear').disabled = !S.history.length;
   }
   function historyEntry(id) {
     for (var i = 0; i < S.history.length; i++) {
@@ -410,24 +442,31 @@
   function startNumberCheck(after, opts) {
     opts = opts || {};
     var names = S.playerNames();
-    var nums = S.assignNumbers(names.length);
-    game.players = names.map(function (n, i) { return { name: n, number: nums[i] }; });
+    var per = S.settings.cardsPerPlayer || 1;
+    var nums = S.assignNumbers(names.length, per);
+    game.players = names.map(function (n, i) { return { name: n, numbers: nums[i] }; });
     game.numIndex = 0;
     game.revealed = false;
     game.numAfter = after;
     game.hasNumbers = true;
-    var range = Math.abs(S.settings.numMax - S.settings.numMin) + 1;
-    if (range < names.length) showToast('数字の範囲が人数より狭いため重複する場合があります', 2600);
+    if (!S.numbersFit(names.length, per)) {
+      showToast('数字の範囲が狭いため（必要 ' + (names.length * per) + ' 個）重複する場合があります', 2800);
+    }
     show('number', opts);
   }
   onEnter.number = function () { renderNumber(); };
+  function renderNumbers(elm, arr) {
+    var n = Math.max(1, Math.min(5, arr.length));
+    elm.className = 'big-number cnt-' + n;
+    elm.innerHTML = arr.map(function (v) { return '<span class="nchip">' + v + '</span>'; }).join('');
+  }
   function renderNumber() {
     var p = game.players[game.numIndex];
     if (!p) return;
     $('num-progress').textContent = (game.numIndex + 1) + ' / ' + game.players.length;
     $('num-msg').textContent = p.name + 'さんの番です。表示された数字を忘れないようにしてください。';
-    $('num-name').textContent = p.name + 'さんの数字';
-    $('big-number').textContent = p.number;
+    $('num-name').textContent = p.name + 'さんの数字' + (p.numbers.length > 1 ? '（' + p.numbers.length + '枚）' : '');
+    renderNumbers($('big-number'), p.numbers);
     $('num-stage').hidden = game.revealed;
     $('num-reveal').hidden = !game.revealed;
     var last = (game.numIndex === game.players.length - 1);
@@ -466,7 +505,7 @@
   }
 
   /* ------------------------- お題表示 ------------------------- */
-  onEnter.display = function () { renderDisplay(); };
+  onEnter.display = function () { syncZoomLabel(); renderDisplay(); };
   function renderDisplay() {
     var t = game.topic;
     if (!t) return;
@@ -479,6 +518,20 @@
     $('disp-next').hidden = !isGame;
     $('disp-forgot').hidden = !game.hasNumbers;
     $('disp-checknum').hidden = game.hasNumbers;
+  }
+
+  function changeScale(delta) {
+    var v = Math.max(50, Math.min(200, (S.settings.textScale || 100) + delta));
+    if (v === S.settings.textScale) { showToast(delta > 0 ? 'これ以上大きくできません' : 'これ以上小さくできません', 1200); return; }
+    S.settings.textScale = v;
+    S.saveSettings();
+    syncZoomLabel();
+    refitDisplay();
+  }
+  function syncZoomLabel() {
+    var v = S.settings.textScale || 100;
+    var z = $('disp-zoom-val'); if (z) z.textContent = v + '%';
+    var t = $('set-scale'); if (t) t.textContent = v + '%';
   }
 
   function refitDisplay() {
@@ -504,8 +557,8 @@
       b.innerHTML = '<span class="pi-idx">' + (game.players.indexOf(p) + 1) + '</span><span>' + esc(p.name) + '</span>';
       b.addEventListener('click', function () {
         confirmDialog('あなたは' + p.name + 'さんですか？', function () {
-          $('forgot-name').textContent = p.name + 'さんの数字';
-          $('forgot-number').textContent = p.number;
+          $('forgot-name').textContent = p.name + 'さんの数字' + (p.numbers.length > 1 ? '（' + p.numbers.length + '枚）' : '');
+          renderNumbers($('forgot-number'), p.numbers);
           $('forgot-reveal').hidden = false;
         });
       });
@@ -559,6 +612,13 @@
       startNumberCheck('numonly');
     });
 
+    // タイトル：ダーク / ライト切替
+    $('btn-theme').addEventListener('click', toggleTheme);
+
+    // お題表示：文字サイズの拡大・縮小
+    $('disp-zoom-in').addEventListener('click', function () { changeScale(10); });
+    $('disp-zoom-out').addEventListener('click', function () { changeScale(-10); });
+
     // 設定
     $$('[data-step]').forEach(function (b) {
       b.addEventListener('click', function () {
@@ -567,8 +627,16 @@
         if (key === 'pickCount') {
           S.settings.pickCount = Math.max(1, Math.min(10, S.settings.pickCount + delta));
           $('set-pick-count').textContent = S.settings.pickCount;
-          S.saveSettings();
+        } else if (key === 'cardsPerPlayer') {
+          S.settings.cardsPerPlayer = Math.max(1, Math.min(5, S.settings.cardsPerPlayer + delta));
+          $('set-cards').textContent = S.settings.cardsPerPlayer;
+        } else if (key === 'textScale') {
+          S.settings.textScale = Math.max(50, Math.min(200, (S.settings.textScale || 100) + delta));
+          $('set-scale').textContent = S.settings.textScale + '%';
+          syncZoomLabel();
         }
+        S.saveSettings();
+        updatePoolInfo();
       });
     });
     ['set-num-min', 'set-num-max'].forEach(function (id) {
@@ -646,7 +714,8 @@
 
     // 履歴
     $('btn-history-show').addEventListener('click', function () {
-      var h = historyEntry(ui.historySelected);
+      if (ui.historySelected.length !== 1) return;
+      var h = historyEntry(ui.historySelected[0]);
       if (!h) return;
       game.topic = { no: h.no, text: h.text, low: h.low, high: h.high, uid: h.uid };
       game.displayMode = 'view';
@@ -656,11 +725,21 @@
       show('display');
     });
     $('btn-history-trash').addEventListener('click', function () {
-      if (!ui.historySelected) { showToast('削除するお題を選択してください'); return; }
-      S.deleteHistory([ui.historySelected]);   // ポップアップなしで削除
-      ui.historySelected = null;
+      if (!ui.historySelected.length) { showToast('削除するお題を選択してください'); return; }
+      var n = ui.historySelected.length;
+      S.deleteHistory(ui.historySelected);     // ポップアップなしで削除
+      ui.historySelected = [];
       renderHistory();
-      showToast('履歴から削除しました');
+      showToast(n + ' 件を履歴から削除しました');
+    });
+    $('btn-history-clear').addEventListener('click', function () {
+      if (!S.history.length) { showToast('履歴はありません'); return; }
+      confirmDialog('履歴をすべて削除します。よろしいですか？', function () {
+        S.clearHistory();
+        ui.historySelected = [];
+        renderHistory();
+        showToast('履歴をすべて削除しました');
+      });
     });
 
     // お題を決める
@@ -730,10 +809,13 @@
   function boot() {
     bind();
     S.init().then(function () {
+      applyTheme();
+      syncZoomLabel();
       renderAllPlayerInputs();
       show('title', { resetStack: true });
     }).catch(function (e) {
       // 何があってもタイトルは表示する
+      applyTheme();
       show('title', { resetStack: true });
       showToast('データの初期化に失敗しました');
     });

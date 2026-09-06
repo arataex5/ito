@@ -167,13 +167,18 @@
     catch (e) { return false; }
   }
 
+  var SETTINGS_VERSION = 2;
   var DEFAULT_SETTINGS = {
-    pickCount: 5,
+    pickCount: 5,          // お題の抽出数（1〜10）
+    cardsPerPlayer: 1,     // 一人当たりの枚数（1〜5）
     numMin: 1,
     numMax: 100,
-    excludeUsed: false,
+    excludeUsed: true,     // 使用したお題を除外する（デフォルトON）
     favoriteOnly: false,
-    useExclusion: false
+    useExclusion: false,
+    textScale: 100,        // お題表示の文字サイズ（50〜200%）
+    theme: 'dark',         // 'dark' | 'light'
+    __v: SETTINGS_VERSION
   };
 
   var Store = {
@@ -187,7 +192,13 @@
     /* 初期化：CSV取得 → 失敗時は埋め込みデータ → localStorage とマージ */
     init: function () {
       var self = this;
-      self.settings = Object.assign({}, DEFAULT_SETTINGS, lsGet(LS.settings, {}));
+      var savedSettings = lsGet(LS.settings, null) || {};
+      if (savedSettings.__v !== SETTINGS_VERSION) {
+        // 旧バージョンからの移行：新しい既定値を適用
+        savedSettings.excludeUsed = true;
+        savedSettings.__v = SETTINGS_VERSION;
+      }
+      self.settings = Object.assign({}, DEFAULT_SETTINGS, savedSettings);
       self.players = Object.assign({ count: 4, names: ['', '', '', ''] }, lsGet(LS.players, {}));
       self.history = lsGet(LS.history, []) || [];
       var saved = lsGet(LS.topics, null);
@@ -369,6 +380,10 @@
       this.history = this.history.filter(function (h, i) { return !set[String(h.ts) + '_' + i]; });
       this.saveHistory();
     },
+    clearHistory: function () {
+      this.history = [];
+      this.saveHistory();
+    },
     resetUsed: function () {
       this.topics.forEach(function (t) { t.used = false; });
       this.saveTopics();
@@ -395,21 +410,37 @@
     },
 
     /* ------------------------- 数字割り当て ------------------------- */
-    assignNumbers: function (playerCount) {
+    /* 全プレイヤー分の数字を重複なしで割り当て、[[n,...], [n,...]] を返す */
+    assignNumbers: function (playerCount, perPlayer) {
+      var per = Math.max(1, Math.min(5, perPlayer || this.settings.cardsPerPlayer || 1));
       var min = this.settings.numMin, max = this.settings.numMax;
-      if (max < min) { var t = min; min = max; max = t; }
+      if (max < min) { var sw = min; min = max; max = sw; }
       var range = max - min + 1;
-      var nums = [];
-      if (range >= playerCount) {
+      var total = playerCount * per;
+      var flat = [];
+      if (range >= total) {
         var used = {};
-        while (nums.length < playerCount) {
+        while (flat.length < total) {
           var v = min + Math.floor(Math.random() * range);
-          if (!used[v]) { used[v] = true; nums.push(v); }
+          if (!used[v]) { used[v] = true; flat.push(v); }
         }
       } else {
-        for (var i = 0; i < playerCount; i++) nums.push(min + Math.floor(Math.random() * range));
+        for (var i = 0; i < total; i++) flat.push(min + Math.floor(Math.random() * range));
       }
-      return nums;
+      var out = [];
+      for (var p = 0; p < playerCount; p++) {
+        var mine = flat.slice(p * per, (p + 1) * per);
+        mine.sort(function (a, b) { return a - b; });
+        out.push(mine);
+      }
+      return out;
+    },
+
+    /* 数字の範囲が足りているか */
+    numbersFit: function (playerCount, perPlayer) {
+      var per = Math.max(1, Math.min(5, perPlayer || this.settings.cardsPerPlayer || 1));
+      var range = Math.abs(this.settings.numMax - this.settings.numMin) + 1;
+      return range >= playerCount * per;
     },
 
     scaleString: buildScale,

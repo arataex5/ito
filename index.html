@@ -23,6 +23,7 @@
     <header class="topbar">
       <div class="tb-left">
         <button class="chip" data-go="list">お題リスト</button>
+        <button class="chip theme-chip" id="btn-theme">🌙 ダークモード</button>
       </div>
       <div class="tb-right">
         <button class="chip" data-go="history">履歴</button>
@@ -74,6 +75,17 @@
       </div>
 
       <div class="card">
+        <label class="row-label">一人当たりの枚数</label>
+        <div class="stepper">
+          <button class="cbtn" data-step="cardsPerPlayer:-1">−</button>
+          <span class="cnum" id="set-cards">1</span>
+          <button class="cbtn" data-step="cardsPerPlayer:1">＋</button>
+          <span class="row-hint">1〜5</span>
+        </div>
+        <p class="row-hint">一人に配られる数字の枚数です。</p>
+      </div>
+
+      <div class="card">
         <label class="row-label">数字の範囲</label>
         <div class="range-row">
           <input type="number" inputmode="numeric" pattern="[0-9]*" id="set-num-min" min="1" max="9999">
@@ -100,6 +112,17 @@
           <span class="check-text">お題の除外を有効化する</span>
         </label>
       </div>
+      <div class="card">
+        <label class="row-label">お題の文字サイズ</label>
+        <div class="stepper">
+          <button class="cbtn" data-step="textScale:-10">−</button>
+          <span class="cnum wide" id="set-scale">100%</span>
+          <button class="cbtn" data-step="textScale:10">＋</button>
+          <span class="row-hint">50%〜200%</span>
+        </div>
+        <p class="row-hint">お題表示画面の文字の大きさ（100% が標準）。</p>
+      </div>
+
       <div class="pool-info" id="pool-info"></div>
     </div>
     <div class="bottom-bar">
@@ -149,6 +172,12 @@
         <input type="search" class="search" id="list-search" placeholder="検索" autocomplete="off">
       </div>
     </header>
+    <div class="list-header">
+      <span class="lh-heart">♡</span>
+      <span class="lh-no">No.</span>
+      <span class="lh-main">お題</span>
+      <span class="lh-check">除外</span>
+    </div>
     <div class="scroll-area">
       <ul class="list" id="topic-list"></ul>
     </div>
@@ -162,7 +191,10 @@
     <header class="topbar">
       <div class="tb-left"><button class="chip back" data-back="1">‹ 戻る</button></div>
       <div class="tb-title">履歴</div>
-      <div class="tb-right"><button class="chip icon-chip" id="btn-history-trash" aria-label="削除">🗑</button></div>
+      <div class="tb-right">
+        <button class="chip" id="btn-history-clear">全削除</button>
+        <button class="chip icon-chip" id="btn-history-trash" aria-label="選択したお題を削除">🗑</button>
+      </div>
     </header>
     <div class="scroll-area">
       <ul class="list" id="history-list"></ul>
@@ -252,6 +284,11 @@
         <div class="scale-bar"></div>
         <div class="scale-side"><span class="scale-num">100</span><span class="scale-label" id="disp-high"></span></div>
       </div>
+    </div>
+    <div class="corner-bl">
+      <button class="btn-zoom" id="disp-zoom-out" aria-label="文字を小さく">−</button>
+      <span class="zoom-val" id="disp-zoom-val">100%</span>
+      <button class="btn-zoom" id="disp-zoom-in" aria-label="文字を大きく">＋</button>
     </div>
     <div class="corner-br">
       <button class="btn-corner" id="disp-forgot">数字忘れちゃった</button>
