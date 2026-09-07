@@ -159,9 +159,9 @@
           <div class="af-title" id="af-title">お題を追加</div>
           <label class="af-label">お題</label>
           <input type="text" id="af-topic" placeholder="例：食べ物" maxlength="60">
-          <label class="af-label">評価 1（小さい側）</label>
+          <label class="af-label" id="af-label-low">評価（小さい側）</label>
           <input type="text" id="af-low" placeholder="例：低カロリーな食べ物" maxlength="60">
-          <label class="af-label">評価 100（大きい側）</label>
+          <label class="af-label" id="af-label-high">評価（大きい側）</label>
           <input type="text" id="af-high" placeholder="例：高カロリーな食べ物" maxlength="60">
           <div class="af-btns">
             <button type="button" class="btn-sub" id="af-cancel">キャンセル</button>
@@ -294,9 +294,9 @@
       <div class="topic-no" id="disp-no"></div>
       <div class="topic-text" id="disp-text"></div>
       <div class="scale">
-        <div class="scale-side"><span class="scale-num">1</span><span class="scale-label" id="disp-low"></span></div>
+        <div class="scale-side"><span class="scale-num" id="disp-num-low">1</span><span class="scale-label" id="disp-low"></span></div>
         <div class="scale-bar"></div>
-        <div class="scale-side"><span class="scale-num">100</span><span class="scale-label" id="disp-high"></span></div>
+        <div class="scale-side"><span class="scale-num" id="disp-num-high">100</span><span class="scale-label" id="disp-high"></span></div>
       </div>
     </div>
     <div class="corner-bl">

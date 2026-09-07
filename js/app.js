@@ -82,6 +82,14 @@
     });
   }
 
+  /* 設定された数値範囲の下端・上端（表示用） */
+  function rangeLow() { return Math.min(S.settings.numMin, S.settings.numMax); }
+  function rangeHigh() { return Math.max(S.settings.numMin, S.settings.numMax); }
+  /* 「40:人気がない → 250:人気がある」のような表記を作る */
+  function scaleLine(low, high, sep) {
+    return rangeLow() + ':' + esc(low) + (sep || ' → ') + rangeHigh() + ':' + esc(high);
+  }
+
   function esc(s) {
     return String(s == null ? '' : s)
       .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -310,6 +318,22 @@
     $('range-hint').textContent = bad
       ? '左 ≦ 右 になるよう自動で入れ替えました（最大4桁）'
       : '左 ≦ 右 / 最大4桁（9999）';
+    updatePoolInfo();
+    refreshScaleLabels();
+  }
+
+  /* 数値範囲の変更を、いま表示中の画面に反映する */
+  function refreshScaleLabels() {
+    var d = $('disp-num-low');
+    if (d) { d.textContent = rangeLow(); $('disp-num-high').textContent = rangeHigh(); }
+    if ($('af-label-low')) {
+      $('af-label-low').textContent = '評価 ' + rangeLow() + '（小さい側）';
+      $('af-label-high').textContent = '評価 ' + rangeHigh() + '（大きい側）';
+    }
+    if (nav.current === 'list') renderList();
+    if (nav.current === 'history') renderHistory();
+    if (nav.current === 'editor') renderEditor();
+    if (nav.current === 'pick') renderPick();
   }
 
   /* ------------------------- お題の追加・削除 ------------------------- */
@@ -339,7 +363,7 @@
         '<span class="li-no">' + t.no + '</span>' +
         '<div class="li-main">' +
           '<div class="mq"><span class="mq-in">' + esc(t.text) + '</span></div>' +
-          '<div class="li-sub">1:' + esc(t.low) + ' → 100:' + esc(t.high) + '</div>' +
+          '<div class="li-sub">' + scaleLine(t.low, t.high) + '</div>' +
         '</div>' + checkHtml;
       li.addEventListener('click', function (ev) {
         if (ui.editMode) {
@@ -366,6 +390,8 @@
   function openAddForm(topic) {
     ui.editingUid = topic ? topic.uid : null;
     $('af-title').textContent = topic ? 'お題を編集（No.' + topic.no + '）' : 'お題を追加（No.' + S.nextNo() + '）';
+    $('af-label-low').textContent = '評価 ' + rangeLow() + '（小さい側）';
+    $('af-label-high').textContent = '評価 ' + rangeHigh() + '（大きい側）';
     $('af-topic').value = topic ? topic.text : '';
     $('af-low').value = topic ? topic.low : '';
     $('af-high').value = topic ? topic.high : '';
@@ -411,7 +437,7 @@
         '<span class="li-no">' + t.no + '</span>' +
         '<div class="li-main">' +
           '<div class="mq"><span class="mq-in">' + esc(t.text) + '</span></div>' +
-          '<div class="li-sub">1:' + esc(t.low) + ' → 100:' + esc(t.high) + '</div>' +
+          '<div class="li-sub">' + scaleLine(t.low, t.high) + '</div>' +
         '</div>' +
         '<label class="li-check"><input type="checkbox" class="ex-check"' + (t.ex ? ' checked' : '') + '><span class="cbox"></span></label>';
       li.querySelector('.li-heart').addEventListener('click', function (ev) {
@@ -462,7 +488,7 @@
         '<span class="li-no">' + (i + 1) + '</span>' +
         '<div class="li-main">' +
           '<div class="mq"><span class="mq-in">' + esc(h.text) + '</span></div>' +
-          '<div class="li-sub">' + tm + '　1:' + esc(h.low) + ' → 100:' + esc(h.high) + '</div>' +
+          '<div class="li-sub">' + tm + '　' + scaleLine(h.low, h.high) + '</div>' +
         '</div>';
       li.addEventListener('click', function () {
         var k = ui.historySelected.indexOf(id);
@@ -511,7 +537,7 @@
         (t.fav ? '<span class="li-heart on" style="width:auto;height:auto;font-size:14px">♥</span>' : '') +
         (t.used ? '<span class="li-badge used">使用済み</span>' : '') + '</div>' +
         '<div class="pcard-title">' + esc(t.text) + '</div>' +
-        '<div class="pcard-scale">1：' + esc(t.low) + '　／　100：' + esc(t.high) + '</div>';
+        '<div class="pcard-scale">' + rangeLow() + '：' + esc(t.low) + '　／　' + rangeHigh() + '：' + esc(t.high) + '</div>';
       b.addEventListener('click', function () {
         game.pickSelected = t.uid;
         $$('.pcard', box).forEach(function (x) { x.classList.remove('sel'); });
@@ -596,6 +622,8 @@
     if (!t) return;
     $('disp-no').textContent = 'No.' + (t.no || '-');
     renderTopicText($('disp-text'), t.text);
+    $('disp-num-low').textContent = rangeLow();
+    $('disp-num-high').textContent = rangeHigh();
     $('disp-low').textContent = t.low;
     $('disp-high').textContent = t.high;
     var isGame = (game.displayMode === 'game');
