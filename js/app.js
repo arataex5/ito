@@ -126,6 +126,90 @@
     });
   }
 
+  /* -------------------------
+     数値の直接入力（範囲外は入力不可）
+     opts = { min, max, get, apply, immediate }
+     ------------------------- */
+  function bindNumberField(id, opts) {
+    var el = $(id);
+    if (!el) return;
+    var min = opts.min, max = opts.max;
+
+    function flagError() {
+      el.classList.add('err');
+      clearTimeout(el._errTm);
+      el._errTm = setTimeout(function () { el.classList.remove('err'); }, 900);
+      showToast(min + '〜' + max + ' の範囲で入力してください', 1500);
+    }
+
+    el.addEventListener('input', function () {
+      var digits = el.value.replace(/[^0-9]/g, '');
+      if (digits !== '') {
+        var n = parseInt(digits, 10);
+        if (n > max) {                       // 上限を超える入力は受け付けない
+          digits = String(opts.get());
+          flagError();
+        }
+      }
+      el.value = digits;
+      if (opts.immediate && digits !== '') {
+        var v = parseInt(digits, 10);
+        if (v >= min) opts.apply(v);
+      }
+    });
+
+    function commit() {
+      var n = parseInt(el.value, 10);
+      if (isNaN(n)) n = opts.get();
+      if (n < min || n > max) flagError();
+      n = Math.max(min, Math.min(max, n));
+      el.value = n;
+      opts.apply(n);
+    }
+    el.addEventListener('change', commit);
+    el.addEventListener('blur', commit);
+    el.addEventListener('keydown', function (ev) {
+      if (ev.key === 'Enter') { ev.preventDefault(); el.blur(); }
+    });
+    // タップしたら全選択して打ち替えやすくする（入力が始まっていたら選択しない）
+    el.addEventListener('focus', function () {
+      var before = el.value;
+      setTimeout(function () {
+        if (document.activeElement === el && el.value === before) el.select();
+      }, 0);
+    });
+  }
+
+  function bindNumberFields() {
+    bindNumberField('set-pick-count', {
+      min: 1, max: 10, immediate: true,
+      get: function () { return S.settings.pickCount; },
+      apply: function (v) { S.settings.pickCount = v; S.saveSettings(); updatePoolInfo(); }
+    });
+    bindNumberField('set-cards', {
+      min: 1, max: 5, immediate: true,
+      get: function () { return S.settings.cardsPerPlayer; },
+      apply: function (v) { S.settings.cardsPerPlayer = v; S.saveSettings(); }
+    });
+    bindNumberField('set-scale', {
+      min: 50, max: 200, immediate: false,
+      get: function () { return S.settings.textScale || 100; },
+      apply: function (v) { S.settings.textScale = v; S.saveSettings(); syncZoomLabel(); refitDisplay(); }
+    });
+    // 人数は打ち終わってから反映（途中の値で名前が消えないように）
+    ['pl-count', 'pl2-count'].forEach(function (id) {
+      bindNumberField(id, {
+        min: 1, max: 20, immediate: false,
+        get: function () { return S.players.count; },
+        apply: function (v) {
+          if (v === S.players.count) { renderAllPlayerInputs(); return; }
+          S.setPlayerCount(v);
+          renderAllPlayerInputs();
+        }
+      });
+    });
+  }
+
   /* ------------------------- 画面遷移 ------------------------- */
   var onEnter = {};
   function show(name, opts) {
@@ -154,7 +238,7 @@
     var box = $(containerId);
     box.innerHTML = '';
     var n = S.players.count;
-    $(countId).textContent = n;
+    $(countId).value = n;
     for (var i = 0; i < n; i++) {
       var row = document.createElement('div');
       row.className = 'pi-row';
@@ -191,9 +275,9 @@
 
   /* ------------------------- 設定 ------------------------- */
   onEnter.settings = function () {
-    $('set-pick-count').textContent = S.settings.pickCount;
-    $('set-cards').textContent = S.settings.cardsPerPlayer;
-    $('set-scale').textContent = S.settings.textScale + '%';
+    $('set-pick-count').value = S.settings.pickCount;
+    $('set-cards').value = S.settings.cardsPerPlayer;
+    $('set-scale').value = S.settings.textScale;
     $('set-num-min').value = S.settings.numMin;
     $('set-num-max').value = S.settings.numMax;
     $('set-exclude-used').checked = !!S.settings.excludeUsed;
@@ -532,7 +616,7 @@
   function syncZoomLabel() {
     var v = S.settings.textScale || 100;
     var z = $('disp-zoom-val'); if (z) z.textContent = v + '%';
-    var t = $('set-scale'); if (t) t.textContent = v + '%';
+    var t = $('set-scale'); if (t) t.value = v;
   }
 
   function refitDisplay() {
@@ -597,6 +681,8 @@
       if (ev.target === $('modal')) { var cb = modalCb.no; closeModal(); if (cb) cb(); }
     });
 
+    bindNumberFields();
+
     // タイトル：人数増減
     $('pl-plus').addEventListener('click', function () { S.setPlayerCount(S.players.count + 1); renderAllPlayerInputs(); });
     $('pl-minus').addEventListener('click', function () { S.setPlayerCount(S.players.count - 1); renderAllPlayerInputs(); });
@@ -638,13 +724,13 @@
         var key = parts[0], delta = parseInt(parts[1], 10);
         if (key === 'pickCount') {
           S.settings.pickCount = Math.max(1, Math.min(10, S.settings.pickCount + delta));
-          $('set-pick-count').textContent = S.settings.pickCount;
+          $('set-pick-count').value = S.settings.pickCount;
         } else if (key === 'cardsPerPlayer') {
           S.settings.cardsPerPlayer = Math.max(1, Math.min(5, S.settings.cardsPerPlayer + delta));
-          $('set-cards').textContent = S.settings.cardsPerPlayer;
+          $('set-cards').value = S.settings.cardsPerPlayer;
         } else if (key === 'textScale') {
           S.settings.textScale = Math.max(50, Math.min(200, (S.settings.textScale || 100) + delta));
-          $('set-scale').textContent = S.settings.textScale + '%';
+          $('set-scale').value = S.settings.textScale;
           syncZoomLabel();
         }
         S.saveSettings();

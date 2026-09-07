@@ -356,7 +356,7 @@
     __v: SETTINGS_VERSION
   };
 
-  var APP_VERSION = '1.5.0';
+  var APP_VERSION = '1.6.0';
 
   var Store = {
     version: APP_VERSION,
@@ -378,6 +378,8 @@
       }
       self.settings = Object.assign({}, DEFAULT_SETTINGS, savedSettings);
       self.players = Object.assign({ count: 4, names: ['', '', '', ''] }, lsGet(LS.players, {}));
+      // アプリを新しく起動するたびにプレイヤー名はリセットする（人数は引き継ぐ）
+      self.clearPlayerNames();
       self.history = lsGet(LS.history, []) || [];
       var saved = lsGet(LS.topics, null);
 
@@ -580,6 +582,15 @@
       n = Math.max(1, Math.min(20, n));
       this.players.count = n;
       while (this.players.names.length < n) this.players.names.push('');
+      // 人数を減らして枠が消えたプレイヤー名は破棄する
+      if (this.players.names.length > n) this.players.names.length = n;
+      this.savePlayers();
+    },
+    /* 起動時などにプレイヤー名を全消去 */
+    clearPlayerNames: function () {
+      var n = this.players.count;
+      this.players.names = [];
+      for (var i = 0; i < n; i++) this.players.names.push('');
       this.savePlayers();
     },
     setPlayerName: function (i, name) {

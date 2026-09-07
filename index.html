@@ -45,7 +45,8 @@
         <span class="ph-label">プレイヤー</span>
         <div class="counter">
           <button class="cbtn" id="pl-minus" aria-label="人数を減らす">−</button>
-          <span class="cnum" id="pl-count">4</span>
+          <input class="cnum-input" id="pl-count" type="text" inputmode="numeric" pattern="[0-9]*"
+                 maxlength="2" autocomplete="off" aria-label="プレイヤー人数（1〜20）" value="4">
           <button class="cbtn" id="pl-plus" aria-label="人数を増やす">＋</button>
         </div>
       </div>
@@ -73,7 +74,8 @@
         <label class="row-label">お題の抽出数</label>
         <div class="stepper">
           <button class="cbtn" data-step="pickCount:-1">−</button>
-          <span class="cnum" id="set-pick-count">5</span>
+          <input class="cnum-input" id="set-pick-count" type="text" inputmode="numeric" pattern="[0-9]*"
+                 maxlength="2" autocomplete="off" aria-label="お題の抽出数（1〜10）" value="5">
           <button class="cbtn" data-step="pickCount:1">＋</button>
           <span class="row-hint">1〜10</span>
         </div>
@@ -83,7 +85,8 @@
         <label class="row-label">一人当たりの枚数</label>
         <div class="stepper">
           <button class="cbtn" data-step="cardsPerPlayer:-1">−</button>
-          <span class="cnum" id="set-cards">1</span>
+          <input class="cnum-input" id="set-cards" type="text" inputmode="numeric" pattern="[0-9]*"
+                 maxlength="1" autocomplete="off" aria-label="一人当たりの枚数（1〜5）" value="1">
           <button class="cbtn" data-step="cardsPerPlayer:1">＋</button>
           <span class="row-hint">1〜5</span>
         </div>
@@ -121,7 +124,11 @@
         <label class="row-label">お題の文字サイズ</label>
         <div class="stepper">
           <button class="cbtn" data-step="textScale:-10">−</button>
-          <span class="cnum wide" id="set-scale">100%</span>
+          <span class="cnum-wrap">
+            <input class="cnum-input" id="set-scale" type="text" inputmode="numeric" pattern="[0-9]*"
+                   maxlength="3" autocomplete="off" aria-label="お題の文字サイズ（50〜200%）" value="100">
+            <span class="cnum-unit">%</span>
+          </span>
           <button class="cbtn" data-step="textScale:10">＋</button>
           <span class="row-hint">50%〜200%</span>
         </div>
@@ -238,7 +245,8 @@
           <span class="ph-label">プレイヤー</span>
           <div class="counter">
             <button class="cbtn" id="pl2-minus" aria-label="人数を減らす">−</button>
-            <span class="cnum" id="pl2-count">4</span>
+            <input class="cnum-input" id="pl2-count" type="text" inputmode="numeric" pattern="[0-9]*"
+                   maxlength="2" autocomplete="off" aria-label="プレイヤー人数（1〜20）" value="4">
             <button class="cbtn" id="pl2-plus" aria-label="人数を増やす">＋</button>
           </div>
         </div>

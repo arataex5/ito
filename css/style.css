@@ -740,3 +740,25 @@ body.rotated .sheet-box{padding-bottom:18px;}
   display:flex;align-items:center;justify-content:center;
   text-decoration:none;
 }
+
+
+/* =========================================================
+   数値の直接入力（+/- ボタンと併用）
+   ========================================================= */
+.cnum-input{
+  width:62px;min-height:var(--tap);
+  padding:0 6px;
+  text-align:center;
+  border-radius:12px;
+  background:var(--input-bg);
+  border:1px solid var(--line);
+  color:var(--fg);
+  font-size:20px;font-weight:800;
+  font-variant-numeric:tabular-nums;
+  -webkit-user-select:text;user-select:text;
+}
+.cnum-input:focus{outline:none;border-color:var(--accent);}
+.cnum-input.err{border-color:var(--danger);}
+.cnum-wrap{display:inline-flex;align-items:center;gap:5px;}
+.cnum-unit{font-size:15px;font-weight:800;color:var(--fg-dim);}
+#set-scale{width:74px;}
