@@ -1,98 +1,97 @@
-/* =========================================================
-   sw.js - 完全オフライン対応 Service Worker
-   すべて相対パスで登録（サブディレクトリ配置 / APK化に対応）
-   ========================================================= */
-/* アプリを更新したら APP_VERSION を上げること（キャッシュが作り直されます） */
-var APP_VERSION = '1.7.0';
-var CACHE = 'ito-cache-' + APP_VERSION;
-var ASSETS = [
-  './',
-  './index.html',
-  './manifest.json',
-  './css/style.css',
-  './js/app.js',
-  './js/data.js',
-  './js/pwa.js',
-  './data/default_topics.csv',
-  './icons/icon-192.png',
-  './icons/icon-512.png',
-  './icons/maskable-512.png',
-  './icons/apple-touch-icon.png'
+// ハイパーロボットのサービスワーカー。
+// アプリ本体（HTML/CSS/JS/アイコン）をキャッシュしておき、オフラインでも
+// 起動できるようにする。
+//
+// CACHE_VERSION は、配布ファイルを更新したら必ず上げること。ここを上げると
+// 古いキャッシュが破棄され、次回起動時に新しいファイルが読み込まれる。
+const CACHE_VERSION = "hyper-robots-v1";
+
+// アプリの見た目・動作に必要な自前のファイル一式。
+const APP_SHELL = [
+  "./",
+  "./index.html",
+  "./style.css",
+  "./boards.js",
+  "./engine.js",
+  "./game.js",
+  "./profile.js",
+  "./network.js",
+  "./online.js",
+  "./multiplayer.js",
+  "./title.js",
+  "./pwa.js",
+  "./manifest.webmanifest",
+  "./icon-192.png",
+  "./icon-512.png",
+  "./icon-maskable-512.png",
+  "./apple-touch-icon.png",
 ];
 
-self.addEventListener('install', function (e) {
-  e.waitUntil(
-    caches.open(CACHE).then(function (c) {
-      // 1件でも失敗した場合に全体が落ちないよう個別に追加
-      return Promise.all(ASSETS.map(function (url) {
-        return c.add(new Request(url, { cache: 'reload' })).catch(function () { return null; });
-      }));
-    }).then(function () { return self.skipWaiting(); })
+self.addEventListener("install", (event) => {
+  event.waitUntil(
+    caches.open(CACHE_VERSION).then((cache) =>
+      // 1つでも失敗すると addAll 全体が失敗してインストールできなくなるので、
+      // 個別に入れて、取れなかったものは黙って諦める。
+      Promise.all(
+        APP_SHELL.map((url) =>
+          cache.add(url).catch(() => {
+            /* このファイルはキャッシュできなかった。致命的ではない。 */
+          })
+        )
+      )
+    )
+  );
+  self.skipWaiting();
+});
+
+self.addEventListener("activate", (event) => {
+  event.waitUntil(
+    caches
+      .keys()
+      .then((keys) => Promise.all(keys.filter((k) => k !== CACHE_VERSION).map((k) => caches.delete(k))))
+      .then(() => self.clients.claim())
   );
 });
 
-self.addEventListener('activate', function (e) {
-  e.waitUntil(
-    caches.keys().then(function (keys) {
-      return Promise.all(keys.map(function (k) {
-        return (k === CACHE) ? null : caches.delete(k);
-      }));
-    }).then(function () { return self.clients.claim(); })
-  );
-});
+self.addEventListener("fetch", (event) => {
+  const req = event.request;
+  if (req.method !== "GET") return;
 
-self.addEventListener('fetch', function (e) {
-  var req = e.request;
-  if (req.method !== 'GET') return;
-  var url = new URL(req.url);
-  if (url.origin !== self.location.origin) return;
-  // APK（アプリ本体のダウンロード）はキャッシュせず、そのままネットワークへ
-  if (/\.apk$/i.test(url.pathname)) return;
+  const url = new URL(req.url);
+  const sameOrigin = url.origin === self.location.origin;
 
-  // HTML / JS / CSS はネットワーク優先（更新をすぐ反映）＋オフライン時はキャッシュ
-  var isCode = (req.mode === 'navigate') ||
-               /\.(?:html|js|css)$/i.test(url.pathname) ||
-               url.pathname === '/' || url.pathname.slice(-1) === '/';
+  // オンライン対戦は常に最新の通信が必要なので、PeerJS の配信サーバや
+  // シグナリング通信はキャッシュせず、そのままネットワークに任せる。
+  if (!sameOrigin) return;
 
-  if (isCode) {
-    e.respondWith(
-      fetch(req).then(function (res) {
-        if (res && res.ok) {
-          var copy = res.clone();
-          caches.open(CACHE).then(function (c) { c.put(req, copy); });
-        }
-        return res;
-      }).catch(function () {
-        return caches.match(req, { ignoreSearch: true }).then(function (r) {
-          return r || caches.match('./index.html');
-        });
-      })
+  // HTML（ページ本体）はネットワーク優先。更新をすぐ反映したいため。
+  // 通信できない時だけキャッシュを使う。
+  const isHTML = req.mode === "navigate" || (req.headers.get("accept") || "").includes("text/html");
+  if (isHTML) {
+    event.respondWith(
+      fetch(req)
+        .then((res) => {
+          const copy = res.clone();
+          caches.open(CACHE_VERSION).then((cache) => cache.put(req, copy));
+          return res;
+        })
+        .catch(() => caches.match(req).then((hit) => hit || caches.match("./index.html")))
     );
     return;
   }
 
-  // 画像 / CSV などはキャッシュ優先（裏で更新）
-  e.respondWith(
-    caches.match(req, { ignoreSearch: true }).then(function (cached) {
-      if (cached) {
-        fetch(req).then(function (res) {
-          if (res && res.ok) caches.open(CACHE).then(function (c) { c.put(req, res.clone()); });
-        }).catch(function () {});
-        return cached;
-      }
-      return fetch(req).then(function (res) {
-        if (res && res.ok) {
-          var copy = res.clone();
-          caches.open(CACHE).then(function (c) { c.put(req, copy); });
+  // それ以外（CSS/JS/画像）はキャッシュ優先。表示が速く、オフラインでも動く。
+  event.respondWith(
+    caches.match(req).then((hit) => {
+      if (hit) return hit;
+      return fetch(req).then((res) => {
+        // 正常に取れたものだけ保存する（エラー応答を保存しない）。
+        if (res && res.status === 200 && res.type === "basic") {
+          const copy = res.clone();
+          caches.open(CACHE_VERSION).then((cache) => cache.put(req, copy));
         }
         return res;
-      }).catch(function () {
-        return caches.match('./index.html');
       });
     })
   );
-});
-
-self.addEventListener('message', function (e) {
-  if (e.data === 'SKIP_WAITING') self.skipWaiting();
 });
