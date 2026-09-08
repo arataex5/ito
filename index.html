@@ -1,408 +1,381 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-<title>ハイパーロボット</title>
-<meta name="description" content="ロボットを滑らせてゴールを目指す思考パズル。一人でも、みんなでも遊べます。">
-
-<!-- PWA（ホーム画面に追加して、アプリのように遊べるようにする） -->
-<link rel="manifest" href="manifest.webmanifest">
-<meta name="theme-color" content="#0e111a">
-<link rel="icon" href="icon-192.png" sizes="192x192" type="image/png">
-<link rel="apple-touch-icon" href="apple-touch-icon.png">
-<!-- iOS でホーム画面から起動した時に、アドレスバー無しの全画面にする -->
-<meta name="apple-mobile-web-app-capable" content="yes">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="format-detection" content="telephone=no,email=no,address=no">
+<meta name="theme-color" content="#0d0f1e">
 <meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="ハイパーロボット">
-
-<link rel="stylesheet" href="style.css">
+<meta name="apple-mobile-web-app-title" content="ito">
+<title>ito</title>
+<link rel="manifest" href="./manifest.json">
+<link rel="apple-touch-icon" href="./icons/apple-touch-icon.png">
+<link rel="icon" href="./icons/icon-192.png">
+<link rel="stylesheet" href="./css/style.css">
 </head>
-<body class="title-active">
-  <div id="title-screen" class="title-screen">
-    <div class="title-card">
+<body>
+<div id="app">
 
-      <!-- ================= 画面1: メインメニュー ================= -->
-      <div class="title-screen-panel" id="screen-main-menu">
-        <div class="title-bots">
-          <span class="title-bot bot-red"></span>
-          <span class="title-bot bot-blue"></span>
-          <span class="title-bot bot-green"></span>
-          <span class="title-bot bot-yellow"></span>
-        </div>
-        <h1 class="title-heading"></h1>
-        <p class="title-subtitle"></p>
-        <p class="title-tagline"></p>
-        <ul class="title-points"></ul>
-        <div class="menu-mode-buttons">
-          <button type="button" class="btn btn-primary menu-mode-btn" id="btn-goto-solo">🎮 ソロモード</button>
-          <button type="button" class="btn btn-primary menu-mode-btn" id="btn-goto-online">🌐 オンライン対戦モード</button>
-        </div>
-      </div>
-
-      <!-- ================= 画面2: ソロモード設定 ================= -->
-      <div class="title-screen-panel hidden" id="screen-solo-settings">
-        <button type="button" class="btn back-btn" id="btn-solo-back">← もどる</button>
-        <h2 class="screen-heading">ソロモード設定</h2>
-        <div class="title-mode-select" role="group" aria-label="ロボットの色数">
-          <button type="button" class="mode-option selected" data-mode="four">4色モード</button>
-          <button type="button" class="mode-option" data-mode="five">5色モード</button>
-        </div>
-        <label class="title-diagonal-toggle">
-          <input type="checkbox" id="diagonal-toggle">
-          <span>斜め壁を追加する（上級者向け）</span>
-        </label>
-        <button class="title-start-btn btn btn-primary" id="btn-solo-start"></button>
-      </div>
-
-      <!-- ================= 画面3: オンライン対戦ロビー ================= -->
-      <div class="title-screen-panel hidden" id="screen-online-lobby">
-        <button type="button" class="btn back-btn" id="btn-online-back">← もどる</button>
-        <h2 class="screen-heading">オンライン対戦</h2>
-        <div class="profile-summary" id="profile-summary-online">
-          <div class="profile-summary-avatar" id="profile-summary-avatar-online"></div>
-          <div class="profile-summary-info">
-            <span class="profile-summary-label">プレイヤー</span>
-            <span class="profile-summary-name" id="profile-summary-name-online"></span>
-          </div>
-          <button type="button" class="btn profile-edit-btn" id="profile-edit-btn-online">編集</button>
-        </div>
-        <button type="button" class="btn btn-primary online-action-btn" id="btn-create-room">🏠 ルーム作成</button>
-        <div class="join-room-row">
-          <input type="text" id="join-room-id-input" maxlength="5" inputmode="numeric" placeholder="ルームID（5桁）">
-          <button type="button" class="btn btn-primary" id="btn-join-room">参加</button>
-        </div>
-        <p class="online-status-line" id="online-status-line"></p>
-      </div>
-
-      <!-- ================= 画面4: ルーム（ロビー内） ================= -->
-      <div class="title-screen-panel hidden" id="screen-room">
-        <button type="button" class="btn back-btn" id="btn-room-leave">← 退出</button>
-        <h2 class="room-name" id="room-name-display"></h2>
-        <div class="room-id-display">
-          ルームID：<span id="room-id-display"></span>
-          <button type="button" class="btn-copy-room-id" id="btn-copy-room-id" title="ルームIDをコピー" aria-label="ルームIDをコピー">📋</button>
-        </div>
-        <span class="room-id-copied-toast" id="room-id-copied-toast">コピーしました</span>
-
-        <div class="room-settings" id="room-settings-panel">
-          <div class="room-setting-row">
-            <div class="room-setting-label-row">
-              <span class="room-setting-label">色数</span>
-              <span class="setting-help" tabindex="0" data-tooltip="4色または5色のロボットで対戦します。5色では壁代わりに使える黒ロボットが増えますが、黒専用のゴールはありません。">？</span>
-            </div>
-            <div class="room-setting-options" id="room-setting-colormode">
-              <button type="button" class="mini-option selected" data-value="four">4色</button>
-              <button type="button" class="mini-option" data-value="five">5色</button>
-            </div>
-          </div>
-          <div class="room-setting-row">
-            <div class="room-setting-label-row">
-              <span class="room-setting-label">斜め壁</span>
-              <span class="setting-help" tabindex="0" data-tooltip="盤面に色つきの斜めの壁を追加します。自分と同じ色の斜め壁はすり抜けられますが、違う色にぶつかるとその場で90度向きが変わります。">？</span>
-            </div>
-            <div class="room-setting-options" id="room-setting-diagonals">
-              <button type="button" class="mini-option selected" data-value="off">なし</button>
-              <button type="button" class="mini-option" data-value="on">あり</button>
-            </div>
-          </div>
-          <div class="room-setting-row">
-            <div class="room-setting-label-row">
-              <span class="room-setting-label">回答後の制限時間</span>
-              <span class="setting-help" tabindex="0" data-tooltip="誰かが手数を宣言してから、他の人がそれより少ない手数で宣言し直せる時間です。時間切れになると、その時点で一番少ない手数を宣言した人の手順を確認します。">？</span>
-            </div>
-            <div class="room-setting-options" id="room-setting-timelimit">
-              <button type="button" class="mini-option" data-value="30">30秒</button>
-              <button type="button" class="mini-option selected" data-value="60">60秒</button>
-              <button type="button" class="mini-option" data-value="90">90秒</button>
-              <button type="button" class="mini-option" data-value="120">120秒</button>
-              <button type="button" class="mini-option" data-value="180">180秒</button>
-              <button type="button" class="mini-option" data-value="300">300秒</button>
-            </div>
-          </div>
-          <div class="room-setting-row">
-            <div class="room-setting-label-row">
-              <span class="room-setting-label">最後まで続ける</span>
-              <span class="setting-help" tabindex="0" data-tooltip="得点差が残りのお題数を上回り、順位が逆転できなくなった時点で対戦を自動終了するかどうかの設定です。「続ける」を選ぶと決着後も最後まで対戦を続けます。">？</span>
-            </div>
-            <div class="room-setting-options" id="room-setting-playuntilend">
-              <button type="button" class="mini-option selected" data-value="on">続ける</button>
-              <button type="button" class="mini-option" data-value="off">決着で終了</button>
-            </div>
-          </div>
-          <div class="room-setting-row room-setting-reveal" id="room-setting-suddendeath-row">
-            <div class="room-setting-label-row">
-              <span class="room-setting-label">サドンデス</span>
-              <span class="setting-help" tabindex="0" data-tooltip="最後のお題が終わった時点で1位が複数人いた場合、1位が一人に決まるまでランダムなお題で対戦を延長するかどうかの設定です。">？</span>
-            </div>
-            <div class="room-setting-options" id="room-setting-suddendeath">
-              <button type="button" class="mini-option" data-value="on">あり</button>
-              <button type="button" class="mini-option selected" data-value="off">なし</button>
-            </div>
-          </div>
-          <div class="room-setting-row">
-            <div class="room-setting-label-row">
-              <span class="room-setting-label">次の問題への準備確認</span>
-              <span class="setting-help" tabindex="0" data-tooltip="ラウンドが終わってから次の目標が出るまでの間、全員の「準備完了」を待つ時間です。「時間制限なし」は全員が押すまでずっと待ちます。「準備確認無し」にすると、この確認画面自体が出ず、すぐ次の目標が表示されます。">？</span>
-            </div>
-            <div class="room-setting-options" id="room-setting-nextready">
-              <button type="button" class="mini-option" data-value="15">15秒</button>
-              <button type="button" class="mini-option selected" data-value="30">30秒</button>
-              <button type="button" class="mini-option" data-value="60">60秒</button>
-              <button type="button" class="mini-option" data-value="unlimited">時間制限なし</button>
-              <button type="button" class="mini-option" data-value="off">準備確認無し</button>
-            </div>
-          </div>
-          <div class="room-setting-row">
-            <div class="room-setting-label-row">
-              <span class="room-setting-label">勝敗判定までの残り時間をデカデカと表示する</span>
-              <span class="setting-help" tabindex="0" data-tooltip="「する」を選ぶと、誰かが回答した時やギブアップした時に、勝敗判定までのカウントダウンを画面中央上側に大きな半透明の赤文字で表示します。">？</span>
-            </div>
-            <div class="room-setting-options" id="room-setting-bigcountdown">
-              <button type="button" class="mini-option selected" data-value="on">する</button>
-              <button type="button" class="mini-option" data-value="off">しない</button>
-            </div>
-          </div>
-        </div>
-
-        <div class="room-player-list" id="room-player-list"></div>
-
-        <div class="room-action-row">
-          <button type="button" class="btn btn-primary" id="btn-room-ready">準備完了</button>
-          <button type="button" class="btn btn-primary hidden" id="btn-room-start">ゲーム開始</button>
-        </div>
-        <p class="online-status-line" id="room-status-line"></p>
-      </div>
-
-    </div>
-  </div>
-
-
-  <div id="profile-editor-overlay" class="profile-editor-overlay hidden">
-    <div class="profile-editor-card">
-      <h2 class="profile-editor-heading">プロフィール設定</h2>
-      <label class="profile-name-label">
-        プレイヤー名（7文字まで）
-        <input type="text" id="profile-name-input" maxlength="7" placeholder="プレイヤー">
-      </label>
-      <div class="avatar-preview-large" id="avatar-preview-large"></div>
-      <div class="part-tabs" id="part-tabs">
-        <button type="button" class="part-tab selected" data-part="background">背景</button>
-        <button type="button" class="part-tab" data-part="head">頭</button>
-        <button type="button" class="part-tab" data-part="eyes">目</button>
-        <button type="button" class="part-tab" data-part="nose">鼻</button>
-        <button type="button" class="part-tab" data-part="mouth">口</button>
-        <button type="button" class="part-tab" data-part="ears">耳</button>
-        <button type="button" class="part-tab" data-part="accessory">アクセサリー</button>
-      </div>
-      <p class="part-editor-label" id="part-editor-label">背景</p>
-      <div class="color-swatch-row" id="color-swatch-row"></div>
-      <div class="shape-grid" id="shape-grid"></div>
-      <div class="profile-editor-actions">
-        <button type="button" class="btn" id="profile-cancel-btn">キャンセル</button>
-        <button type="button" class="btn btn-primary" id="profile-save-btn">保存して閉じる</button>
-      </div>
-    </div>
-  </div>
-
-  <div class="app">
-    <div id="clear-banner" class="clear-banner"></div>
-    <div id="disconnect-banner" class="clear-banner disconnect-banner"></div>
-    <div id="round-result-banner" class="round-result-banner">
-      <div class="round-result-banner-text"></div>
-    </div>
-
-    <div id="big-countdown-display" class="big-countdown-display hidden"></div>
-    <div id="race-flash-banner" class="race-flash-banner"></div>
-    <div id="match-over-banner" class="race-flash-banner match-over-banner"></div>
-    <div id="return-title-banner" class="race-flash-banner return-title-banner"></div>
-
-    <div id="result-screen-overlay" class="result-screen-overlay hidden">
-      <div class="result-screen-box">
-        <h2 class="result-screen-heading">リザルト</h2>
-        <div class="result-screen-list" id="result-screen-list"></div>
-        <div class="result-screen-actions">
-          <button type="button" class="btn" id="btn-result-back-title">タイトルへ戻る</button>
-          <button type="button" class="btn btn-primary" id="btn-result-rematch">もう一度遊ぶ</button>
-        </div>
-        <div class="result-screen-rematch-status" id="result-screen-rematch-status"></div>
-      </div>
-    </div>
-
-    <div id="goal-reveal-banner" class="goal-reveal-banner">
-      <div class="goal-reveal-banner-icon" id="goal-reveal-banner-icon"></div>
-      <div class="goal-reveal-banner-text" id="goal-reveal-banner-text"></div>
-    </div>
-
-    <div id="thinking-overlay" class="thinking-overlay hidden">
-      <div class="thinking-overlay-content">
-        <div class="thinking-spinner"></div>
-        <div class="thinking-text">思考中...</div>
-      </div>
-    </div>
-
-    <div id="mapgen-overlay" class="thinking-overlay hidden">
-      <div class="thinking-overlay-content">
-        <div class="thinking-spinner"></div>
-        <div class="thinking-text">マップ生成中...</div>
-      </div>
-    </div>
-
-    <div id="solver-failed-overlay" class="solver-failed-overlay hidden">
-      <div class="solver-failed-box">
-        <button type="button" class="solver-failed-back-btn" id="btn-solver-failed-back">← ゲーム画面に戻る</button>
-        <p class="solver-failed-message">ゴールすることができませんでした。</p>
-        <div class="solver-failed-actions">
-          <button type="button" class="btn" id="btn-solver-search-more">もう少し探してもらう</button>
-          <button type="button" class="btn btn-primary" id="btn-solver-next-goal">次の問題へ進む</button>
-        </div>
-      </div>
-    </div>
-
+  <!-- ============ タイトル画面 ============ -->
+  <section class="screen" id="screen-title">
     <header class="topbar">
-      <h1 class="logo">ハイパーロボット</h1>
-      <div class="player-badge" id="player-badge">
-        <div class="player-badge-avatar" id="player-badge-avatar"></div>
-        <span id="player-badge-name"></span>
+      <div class="tb-left">
+        <button class="chip" data-go="list">お題リスト</button>
+        <button class="chip theme-chip" id="btn-theme">☀ ライトモード</button>
       </div>
-      <span class="mode-badge" id="play-mode-badge">一人用モード</span>
-      <span class="mode-badge" id="color-mode-badge">4色モード</span>
-      <span class="mode-badge" id="diagonal-mode-badge" style="display:none;">斜め壁あり</span>
-      <span class="mode-badge" id="cleared-badge">クリア: 0</span>
-      <span class="mode-badge hidden" id="room-id-badge"></span>
-      <div class="topbar-actions">
-        <button id="btn-how-to" class="btn">📖 遊び方・ルール</button>
-        <button id="btn-back-title" class="btn">🏠 タイトルへ戻る</button>
-        <button id="btn-new-map" class="btn">🔀 新しいマップ</button>
+      <div class="tb-right">
+        <button class="chip icon-chip btn-orient" aria-label="画面の向き">⟳</button>
+        <button class="chip" data-go="history">履歴</button>
+        <button class="chip" data-go="settings">設定</button>
       </div>
     </header>
 
-    <section class="goal-panel">
-      <div class="goal-info">
-        <div class="goal-icon" id="goal-icon"></div>
-        <div class="goal-text">
-          <p class="goal-label">目標</p>
-          <p class="goal-desc" id="goal-desc">盤面を準備しています…</p>
-        </div>
+    <div class="title-hero">
+      <div class="logo">
+        <span class="logo-i">i</span><span class="logo-t">t</span><span class="logo-o">o</span>
       </div>
-      <div class="stat-group">
-        <div class="stat">
-          <span class="stat-label">手数</span>
-          <span class="stat-value" id="move-count">0</span>
-        </div>
-        <div class="stat" id="goals-remaining-stat">
-          <span class="stat-label">残りゴール</span>
-          <span class="stat-value" id="goals-remaining">-</span>
-        </div>
-      </div>
-    </section>
-
-    <section class="controls" id="solo-controls">
-      <button id="btn-undo" class="btn" disabled>↶ 一個戻る</button>
-      <button id="btn-redo" class="btn" disabled>↷ 一個進む</button>
-      <button id="btn-reset" class="btn">⟲ リセット</button>
-      <button id="btn-check" class="btn btn-accent">答え合わせ</button>
-      <button id="btn-next" class="btn">次の問題へ →</button>
-    </section>
-
-    <section class="controls hidden" id="online-controls">
-      <button id="btn-online-undo" class="btn" disabled>↶ 一個戻る</button>
-      <button id="btn-online-redo" class="btn" disabled>↷ 一個進む</button>
-      <button id="btn-online-reset" class="btn">⟲ リセット</button>
-      <button id="btn-online-declare" class="btn btn-primary" disabled>📣 回答する</button>
-      <button id="btn-online-giveup" class="btn btn-accent">🏳️ 答えが知りたい！（ギブアップ）</button>
-      <button id="btn-switch-to-solo" class="btn hidden">🧍 ソロモードに切り替える</button>
-    </section>
-
-    <div id="solo-suggest-overlay" class="solo-suggest-overlay hidden">
-      <div class="solo-suggest-box">
-        <p class="solo-suggest-message">残りプレイヤーが一人となりました。ソロモードに切り替えますか？</p>
-        <div class="solo-suggest-actions">
-          <button type="button" class="btn" id="btn-solo-suggest-wait">待機する</button>
-          <button type="button" class="btn btn-primary" id="btn-solo-suggest-switch">ソロモードに切り替える</button>
-        </div>
-      </div>
+      <p class="logo-sub">価値観をならべるゲーム</p>
+      <button class="btn-huge" id="btn-pick-topic">お題を決める</button>
     </div>
 
-    <div class="online-hud hidden" id="online-hud">
-      <div class="online-hud-players" id="online-hud-players"></div>
-      <div class="online-hud-race" id="online-hud-race"></div>
-    </div>
-
-    <div id="next-ready-overlay" class="next-ready-overlay hidden">
-      <div class="next-ready-card" id="next-ready-card">
-        <h2 class="next-ready-heading">次の問題へ進む準備はいいですか？</h2>
-        <div class="next-ready-countdown" id="next-ready-countdown"></div>
-        <button id="btn-watch-champion-replay" class="btn next-ready-replay-btn hidden">🎬 最短手のリプレイを見る</button>
-        <div class="next-ready-player-list" id="next-ready-player-list"></div>
-        <button id="btn-online-next-ready" class="btn btn-primary">👍 準備完了</button>
-        <div class="next-ready-replay-veil hidden" id="next-ready-replay-veil"></div>
-      </div>
-    </div>
-
-    <p class="status-line" id="status-line"></p>
-
-    <div class="board-wrap">
-      <div class="board" id="board"></div>
-    </div>
-
-    <!-- スマホ用の操作パネル。盤面の下に、左側に補助ボタン＋ロボット選択、
-         右側に方向キーを置く。PC では CSS で非表示にしている。 -->
-    <div class="touch-deck" id="touch-deck">
-      <div class="touch-deck-left">
-        <div class="touch-deck-row">
-          <button type="button" class="touch-btn" id="td-undo" aria-label="一個戻る">↶</button>
-          <button type="button" class="touch-btn" id="td-redo" aria-label="一個進む">↷</button>
-          <button type="button" class="touch-btn" id="td-reset" aria-label="リセット">⟲</button>
-        </div>
-        <div class="touch-deck-row touch-robot-row" id="td-robot-row">
-          <button type="button" class="touch-robot" data-robot="0" aria-label="1番目のロボットを選択"></button>
-          <button type="button" class="touch-robot" data-robot="1" aria-label="2番目のロボットを選択"></button>
-          <button type="button" class="touch-robot" data-robot="2" aria-label="3番目のロボットを選択"></button>
-          <button type="button" class="touch-robot" data-robot="3" aria-label="4番目のロボットを選択"></button>
-          <button type="button" class="touch-robot" data-robot="4" aria-label="5番目のロボットを選択"></button>
+    <div class="players-panel">
+      <div class="players-head">
+        <span class="ph-label">プレイヤー</span>
+        <div class="counter">
+          <button class="cbtn" id="pl-minus" aria-label="人数を減らす">−</button>
+          <input class="cnum-input" id="pl-count" type="text" inputmode="numeric" pattern="[0-9]*"
+                 maxlength="2" autocomplete="off" aria-label="プレイヤー人数（1〜20）" value="4">
+          <button class="cbtn" id="pl-plus" aria-label="人数を増やす">＋</button>
         </div>
       </div>
-      <div class="touch-dpad" id="touch-dpad">
-        <button type="button" class="dpad-btn dpad-n" data-dir="N" aria-label="上へ移動">▲</button>
-        <button type="button" class="dpad-btn dpad-w" data-dir="W" aria-label="左へ移動">◀</button>
-        <button type="button" class="dpad-btn dpad-e" data-dir="E" aria-label="右へ移動">▶</button>
-        <button type="button" class="dpad-btn dpad-s" data-dir="S" aria-label="下へ移動">▼</button>
-      </div>
+      <div class="player-inputs" id="player-inputs"></div>
     </div>
 
-    <div class="how-to-overlay hidden" id="how-to-overlay">
-      <div class="how-to-box">
-        <button type="button" class="how-to-close" id="btn-how-to-close" aria-label="閉じる">×</button>
-        <h2 class="how-to-title">遊び方・ルール</h2>
-      <div class="how-to-body">
-        <p><strong>移動のルール</strong><br>
-        ロボットは縦・横のまっすぐな方向にしか動けません。しかも、壁や他のロボットにぶつかるまで止まることができず、途中で曲がることもできません。ロボットをクリックすると選択され、進める方向に矢印が表示されます。矢印をクリックすると、止まる場所までスライドします。</p>
-        <p><strong>目標</strong><br>
-        盤面の上部に表示された色と形のマスへ、その色のロボットを最短手数で導きましょう。目標マスにロボットが到達すると、自動的にクリアと判定されます。他の色のロボットを壁代わりに使うこともできます。</p>
-        <p><strong>答え合わせ</strong><br>
-        コンピュータが裏で考えていた最短手順をロボットが実際に動きながら教えてくれます。まだ思いついていない場合は「しばらくお待ちください」と表示され、10秒たっても見つからない場合は「見つかりませんでした」と表示されます。</p>
-        <p><strong>次の問題へ</strong><br>
-        いつでも次の目標に進むことができます。ロボットの位置はそのまま引き継がれます。</p>
-        <p><strong>リセット</strong><br>
-        今の目標が現れた時点の位置まで、ロボットをまとめて戻します。手数もリセットされ、その場でやり直せます。</p>
-        <p><strong>斜め壁（任意設定）</strong><br>
-        タイトル画面で「斜め壁を追加する」を選ぶと、盤面のところどころに色つきの斜めの壁が現れます。自分と同じ色の斜め壁はすり抜けられますが、違う色の斜め壁にぶつかると、その場で90度向きが変わってそのまま直進します（曲がるところまでで1手です）。</p>
+    <div class="title-foot">
+      <button class="btn-install" id="btn-install-open" hidden>
+        <span class="bi-ico" aria-hidden="true">⬇</span>
+        <span class="bi-txt">オフラインで使えるアプリをインストールする</span>
+      </button>
+      <button class="btn-tiny" id="btn-number-only">数字だけ確認する</button>
+    </div>
+  </section>
+
+  <!-- ============ 設定 ============ -->
+  <section class="screen" id="screen-settings">
+    <header class="topbar">
+      <div class="tb-left"><button class="chip back" data-back="1">‹ 戻る</button></div>
+      <div class="tb-title">設定</div>
+      <div class="tb-right"></div>
+    </header>
+    <div class="scroll-area">
+      <div class="card">
+        <label class="row-label">お題の抽出数</label>
+        <div class="stepper">
+          <button class="cbtn" data-step="pickCount:-1">−</button>
+          <input class="cnum-input" id="set-pick-count" type="text" inputmode="numeric" pattern="[0-9]*"
+                 maxlength="2" autocomplete="off" aria-label="お題の抽出数（1〜10）" value="5">
+          <button class="cbtn" data-step="pickCount:1">＋</button>
+          <span class="row-hint">1〜10</span>
+        </div>
       </div>
+
+      <div class="card">
+        <label class="row-label">一人当たりの枚数</label>
+        <div class="stepper">
+          <button class="cbtn" data-step="cardsPerPlayer:-1">−</button>
+          <input class="cnum-input" id="set-cards" type="text" inputmode="numeric" pattern="[0-9]*"
+                 maxlength="1" autocomplete="off" aria-label="一人当たりの枚数（1〜5）" value="1">
+          <button class="cbtn" data-step="cardsPerPlayer:1">＋</button>
+          <span class="row-hint">1〜5</span>
+        </div>
+        <p class="row-hint">一人に配られる数字の枚数です。</p>
+      </div>
+
+      <div class="card">
+        <label class="row-label">数字の範囲</label>
+        <div class="range-row">
+          <input type="number" inputmode="numeric" pattern="[0-9]*" id="set-num-min" min="1" max="9999">
+          <span class="tilde">〜</span>
+          <input type="number" inputmode="numeric" pattern="[0-9]*" id="set-num-max" min="1" max="9999">
+        </div>
+        <p class="row-hint" id="range-hint">左 ≦ 右 / 最大4桁（9999）</p>
+      </div>
+
+      <div class="card">
+        <label class="check-row">
+          <input type="checkbox" id="set-exclude-used">
+          <span class="cbox"></span>
+          <span class="check-text">使用したお題を除外する</span>
+        </label>
+        <label class="check-row">
+          <input type="checkbox" id="set-favorite-only">
+          <span class="cbox"></span>
+          <span class="check-text">お気に入りからランダムにお題を選ぶ</span>
+        </label>
+        <label class="check-row">
+          <input type="checkbox" id="set-use-exclusion">
+          <span class="cbox"></span>
+          <span class="check-text">お題の除外を有効化する</span>
+        </label>
+      </div>
+      <div class="card">
+        <label class="row-label">お題の文字サイズ</label>
+        <div class="stepper">
+          <button class="cbtn" data-step="textScale:-10">−</button>
+          <span class="cnum-wrap">
+            <input class="cnum-input" id="set-scale" type="text" inputmode="numeric" pattern="[0-9]*"
+                   maxlength="3" autocomplete="off" aria-label="お題の文字サイズ（50〜200%）" value="100">
+            <span class="cnum-unit">%</span>
+          </span>
+          <button class="cbtn" data-step="textScale:10">＋</button>
+          <span class="row-hint">50%〜200%</span>
+        </div>
+        <p class="row-hint">お題表示画面の文字の大きさ（100% が標準）。</p>
+      </div>
+
+      <div class="pool-info" id="pool-info"></div>
+      <div class="version-info" id="version-info"></div>
+    </div>
+    <div class="bottom-bar">
+      <button class="btn-big" data-go="editor">お題の追加、削除</button>
+    </div>
+  </section>
+
+  <!-- ============ お題の追加、削除 ============ -->
+  <section class="screen" id="screen-editor">
+    <header class="topbar">
+      <div class="tb-left"><button class="chip back" data-back="1">‹ 戻る</button></div>
+      <div class="tb-title">お題の追加・削除</div>
+      <div class="tb-right"><button class="chip" id="btn-edit-mode">編集</button></div>
+    </header>
+    <div class="scroll-area" id="editor-scroll">
+      <ul class="list" id="editor-list"></ul>
+
+      <div class="add-zone">
+        <button class="fab-add" id="btn-add-open" aria-label="お題を追加">＋</button>
+        <form class="add-form" id="add-form" hidden>
+          <div class="af-title" id="af-title">お題を追加</div>
+          <label class="af-label">お題</label>
+          <input type="text" id="af-topic" placeholder="例：食べ物" maxlength="60">
+          <label class="af-label" id="af-label-low">評価（小さい側）</label>
+          <input type="text" id="af-low" placeholder="例：低カロリーな食べ物" maxlength="60">
+          <label class="af-label" id="af-label-high">評価（大きい側）</label>
+          <input type="text" id="af-high" placeholder="例：高カロリーな食べ物" maxlength="60">
+          <div class="af-btns">
+            <button type="button" class="btn-sub" id="af-cancel">キャンセル</button>
+            <button type="submit" class="btn-main" id="af-save">保存</button>
+          </div>
+        </form>
+      </div>
+    </div>
+    <div class="bottom-bar" id="editor-delete-bar" hidden>
+      <button class="btn-danger" id="btn-delete-selected">選択したお題を削除</button>
+    </div>
+  </section>
+
+  <!-- ============ お題リスト ============ -->
+  <section class="screen" id="screen-list">
+    <header class="topbar">
+      <div class="tb-left"><button class="chip back" data-back="1">‹ 戻る</button></div>
+      <div class="tb-right list-tools">
+        <button class="chip icon-chip" id="btn-filter-fav" aria-label="お気に入りリスト">♡</button>
+        <button class="chip" id="btn-filter-ex">除外リスト</button>
+        <input type="search" class="search" id="list-search" placeholder="検索" autocomplete="off">
+      </div>
+    </header>
+    <div class="list-header">
+      <span class="lh-heart">♡</span>
+      <span class="lh-no">No.</span>
+      <span class="lh-main">お題</span>
+      <span class="lh-check">除外</span>
+    </div>
+    <div class="scroll-area">
+      <ul class="list" id="topic-list"></ul>
+    </div>
+    <div class="bottom-bar">
+      <button class="btn-big" id="btn-list-show" disabled>表示する</button>
+    </div>
+  </section>
+
+  <!-- ============ 履歴 ============ -->
+  <section class="screen" id="screen-history">
+    <header class="topbar">
+      <div class="tb-left"><button class="chip back" data-back="1">‹ 戻る</button></div>
+      <div class="tb-title">履歴</div>
+      <div class="tb-right">
+        <button class="chip" id="btn-history-clear">全削除</button>
+        <button class="chip icon-chip" id="btn-history-trash" aria-label="選択したお題を削除">🗑</button>
+      </div>
+    </header>
+    <div class="scroll-area">
+      <ul class="list" id="history-list"></ul>
+    </div>
+    <div class="bottom-bar">
+      <button class="btn-big" id="btn-history-show" disabled>表示する</button>
+    </div>
+  </section>
+
+  <!-- ============ お題を決める（抽出カード） ============ -->
+  <section class="screen" id="screen-pick">
+    <header class="topbar">
+      <div class="tb-left"><button class="chip back" data-back="1">‹ 戻る</button></div>
+      <div class="tb-title">お題を選ぶ</div>
+      <div class="tb-right"><button class="chip" id="btn-repick">引き直す</button></div>
+    </header>
+    <div class="scroll-area">
+      <div class="pick-cards" id="pick-cards"></div>
+    </div>
+    <div class="bottom-bar">
+      <button class="btn-big" id="btn-pick-decide" disabled>決定</button>
+    </div>
+  </section>
+
+  <!-- ============ プレイヤー入力（お題リスト経由の数字確認用） ============ -->
+  <section class="screen" id="screen-players">
+    <header class="topbar">
+      <div class="tb-left"><button class="chip back" data-back="1">‹ 戻る</button></div>
+      <div class="tb-title">プレイヤー</div>
+      <div class="tb-right"></div>
+    </header>
+    <div class="scroll-area">
+      <div class="players-panel flat">
+        <div class="players-head">
+          <span class="ph-label">プレイヤー</span>
+          <div class="counter">
+            <button class="cbtn" id="pl2-minus" aria-label="人数を減らす">−</button>
+            <input class="cnum-input" id="pl2-count" type="text" inputmode="numeric" pattern="[0-9]*"
+                   maxlength="2" autocomplete="off" aria-label="プレイヤー人数（1〜20）" value="4">
+            <button class="cbtn" id="pl2-plus" aria-label="人数を増やす">＋</button>
+          </div>
+        </div>
+        <div class="player-inputs" id="player-inputs-2"></div>
+      </div>
+    </div>
+    <div class="bottom-bar">
+      <button class="btn-big" id="btn-players-go">数字を確認する</button>
+    </div>
+  </section>
+
+  <!-- ============ 数字確認画面（共通） ============ -->
+  <section class="screen dark" id="screen-number">
+    <header class="topbar">
+      <div class="tb-left"><button class="chip back" data-back="1">‹ 戻る</button></div>
+      <div class="tb-title" id="num-progress"></div>
+      <div class="tb-right"><button class="chip icon-chip btn-orient" aria-label="画面の向き">⟳</button></div>
+    </header>
+    <div class="tap-area" id="number-tap">
+      <div class="num-stage" id="num-stage">
+        <p class="num-msg" id="num-msg"></p>
+        <p class="num-hint">画面をタップしてください</p>
+      </div>
+      <div class="num-stage" id="num-reveal" hidden>
+        <p class="num-name" id="num-name"></p>
+        <div class="big-number" id="big-number">--</div>
+        <p class="num-hint">この数字を覚えてください</p>
+      </div>
+    </div>
+    <div class="bottom-bar">
+      <button class="btn-big" id="btn-num-next" disabled>次の人へ</button>
+    </div>
+  </section>
+
+  <!-- ============ お題表示画面 ============ -->
+  <section class="screen dark" id="screen-display">
+    <header class="topbar">
+      <div class="tb-left"><button class="chip back" id="disp-left">‹ タイトル</button></div>
+      <div class="tb-right">
+        <button class="chip" id="disp-next">次のお題へ</button>
+        <button class="chip icon-chip btn-orient" aria-label="画面の向き">⟳</button>
+      </div>
+    </header>
+    <div class="display-body">
+      <div class="topic-no" id="disp-no"></div>
+      <div class="topic-text" id="disp-text"></div>
+      <div class="scale">
+        <div class="scale-side"><span class="scale-num" id="disp-num-low">1</span><span class="scale-label" id="disp-low"></span></div>
+        <div class="scale-bar"></div>
+        <div class="scale-side"><span class="scale-num" id="disp-num-high">100</span><span class="scale-label" id="disp-high"></span></div>
+      </div>
+    </div>
+    <div class="corner-bl">
+      <button class="btn-zoom" id="disp-zoom-out" aria-label="文字を小さく">−</button>
+      <span class="zoom-val" id="disp-zoom-val">100%</span>
+      <button class="btn-zoom" id="disp-zoom-in" aria-label="文字を大きく">＋</button>
+    </div>
+    <div class="corner-br">
+      <button class="btn-corner" id="disp-forgot">数字忘れちゃった</button>
+      <button class="btn-corner" id="disp-checknum">数字確認</button>
+    </div>
+  </section>
+
+  <!-- ============ 数字だけ確認・完了画面 ============ -->
+  <section class="screen dark" id="screen-numonly">
+    <header class="topbar">
+      <div class="tb-left"><button class="chip back" data-go="title">‹ タイトル</button></div>
+      <div class="tb-right">
+        <button class="chip" id="btn-renew-numbers">数字を新しくする</button>
+        <button class="chip icon-chip btn-orient" aria-label="画面の向き">⟳</button>
+      </div>
+    </header>
+    <div class="center-body">
+      <button class="btn-huge alt" id="btn-forgot-main">数字忘れちゃった</button>
+    </div>
+  </section>
+
+  <!-- ============ 数字忘れちゃった ============ -->
+  <section class="screen dark" id="screen-forgot">
+    <header class="topbar">
+      <div class="tb-left"><button class="chip back" data-back="1">‹ 戻る</button></div>
+      <div class="tb-title">数字を確認する人を選ぶ</div>
+      <div class="tb-right"><button class="chip icon-chip btn-orient" aria-label="画面の向き">⟳</button></div>
+    </header>
+    <div class="scroll-area">
+      <ul class="name-list" id="forgot-list"></ul>
+    </div>
+    <div class="reveal-overlay" id="forgot-reveal" hidden>
+      <p class="num-name" id="forgot-name"></p>
+      <div class="big-number" id="forgot-number">--</div>
+      <p class="num-hint">タップでリストに戻ります</p>
+    </div>
+  </section>
+
+  <!-- ============ アプリのインストール（APKダウンロード） ============ -->
+  <div class="sheet" id="install-sheet" hidden>
+    <div class="sheet-box">
+      <h2 class="sheet-title">Androidアプリをインストール</h2>
+      <p class="sheet-lead">通信がなくても使えるアプリ版です。ホーム画面のアイコンから起動できます。</p>
+      <ol class="sheet-steps">
+        <li><b>ダウンロード</b>を押す（約4MB）</li>
+        <li>「有害なファイルの可能性」と出たら <b>続行</b> をタップ</li>
+        <li>通知欄またはファイルアプリで <b>ito.apk</b> を開く</li>
+        <li>「不明なアプリのインストール」を許可 →「インストール」</li>
+      </ol>
+      <p class="sheet-note">Playストア経由ではないため「Play Protect によりブロック」と出ることがあります。その場合は「詳細」→「無視してインストール」を選んでください。</p>
+      <div class="sheet-btns">
+        <button class="btn-sub" id="install-close" type="button">閉じる</button>
+        <a class="btn-main" id="install-dl" href="./download/ito.apk" download="ito.apk">ダウンロード</a>
       </div>
     </div>
   </div>
 
-  <script src="boards.js"></script>
-  <script src="engine.js"></script>
-  <script src="game.js"></script>
-  <script src="profile.js"></script>
-  <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
-  <script src="network.js"></script>
-  <script src="online.js"></script>
-  <script src="multiplayer.js"></script>
-  <script src="title.js"></script>
-  <script src="pwa.js"></script>
+  <!-- ============ 共通モーダル / トースト（#app 内に置き、横画面レイアウトに追従） ============ -->
+  <div class="modal" id="modal" hidden>
+    <div class="modal-box">
+      <p class="modal-text" id="modal-text"></p>
+      <div class="modal-btns">
+        <button class="btn-sub" id="modal-no">いいえ</button>
+        <button class="btn-main" id="modal-yes">はい</button>
+      </div>
+    </div>
+  </div>
+  <div class="toast" id="toast" hidden></div>
+
+</div>
+
+<script src="./js/data.js"></script>
+<script src="./js/app.js"></script>
+<script src="./js/pwa.js"></script>
 </body>
 </html>
