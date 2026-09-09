@@ -356,7 +356,7 @@
     __v: SETTINGS_VERSION
   };
 
-  var APP_VERSION = '1.7.0';
+  var APP_VERSION = '1.8.0';
 
   var Store = {
     version: APP_VERSION,
@@ -385,6 +385,8 @@
 
       return self._loadMaster().then(function (master) {
         self.topics = self._merge(master, saved);
+        // 「使用済みなのに履歴にない」等の不整合を起動時に自動修復
+        self.repaired = self.syncUsedFromHistory();
         self.saveTopics();
         return self;
       });
@@ -542,28 +544,77 @@
       return { list: arr.slice(0, Math.max(1, count)), relaxed: relaxed, poolSize: pool.length };
     },
 
-    /* 使用済みにして履歴へ */
+    /* 使用済みにして履歴へ（履歴の保存に失敗したら使用済みにもしない） */
     markUsed: function (uid) {
       var t = this.byUid(uid);
-      if (!t) return;
+      if (!t) return false;
+      var entry = {
+        uid: t.uid, no: t.no, text: t.text, low: t.low, high: t.high, ts: Date.now()
+      };
+      this.history.push(entry);
+      if (this.history.length > 500) this.history = this.history.slice(-500);
+      if (!this.saveHistory()) {          // 保存できなければ元に戻す
+        this.history.pop();
+        return false;
+      }
       t.used = true;
       this.saveTopics();
-      this.history.push({
-        uid: t.uid, no: t.no, text: t.text, low: t.low, high: t.high, ts: Date.now()
-      });
-      if (this.history.length > 500) this.history = this.history.slice(-500);
-      this.saveHistory();
+      return true;
     },
+
+    /* 履歴を正として「使用済み」を合わせる（不整合の自動修復） */
+    syncUsedFromHistory: function () {
+      var inHistory = {};
+      this.history.forEach(function (h) { if (h && h.uid) inHistory[h.uid] = true; });
+      var changed = 0;
+      this.topics.forEach(function (t) {
+        var should = !!inHistory[t.uid];
+        if (t.used !== should) { t.used = should; changed++; }
+      });
+      if (changed) this.saveTopics();
+      return changed;
+    },
+
+    /* 履歴から削除（削除したお題の「使用済み」も解除する）。戻り値は元に戻す用のデータ */
     deleteHistory: function (ids) {
       var set = {};
       ids.forEach(function (i) { set[i] = true; });
-      this.history = this.history.filter(function (h, i) { return !set[String(h.ts) + '_' + i]; });
+      var removed = [];
+      this.history = this.history.filter(function (h, i) {
+        if (set[String(h.ts) + '_' + i]) { removed.push(h); return false; }
+        return true;
+      });
       this.saveHistory();
+      this.syncUsedFromHistory();
+      return removed;
     },
+
     clearHistory: function () {
+      var removed = this.history.slice();
       this.history = [];
       this.saveHistory();
+      this.syncUsedFromHistory();
+      return removed;
     },
+
+    /* 削除の取り消し */
+    restoreHistory: function (entries) {
+      if (!entries || !entries.length) return;
+      var self = this;
+      entries.forEach(function (h) { self.history.push(h); });
+      this.history.sort(function (a, b) { return (a.ts || 0) - (b.ts || 0); });
+      this.saveHistory();
+      this.syncUsedFromHistory();
+    },
+
+    /* 保存されている内容を書き直す（アプリ終了前の確定用） */
+    flush: function () {
+      this.saveTopics();
+      this.saveHistory();
+      this.saveSettings();
+      this.savePlayers();
+    },
+
     resetUsed: function () {
       this.topics.forEach(function (t) { t.used = false; });
       this.saveTopics();

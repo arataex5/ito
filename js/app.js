@@ -47,9 +47,26 @@
   }
 
   /* ------------------------- 汎用UI ------------------------- */
-  function showToast(msg, ms) {
+  function showToast(msg, ms, actionLabel, onAction) {
     var t = $('toast');
-    t.textContent = msg;
+    t.innerHTML = '';
+    var span = document.createElement('span');
+    span.className = 'toast-text';
+    span.textContent = msg;
+    t.appendChild(span);
+    if (actionLabel && onAction) {
+      var b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'toast-action';
+      b.textContent = actionLabel;
+      b.addEventListener('click', function (ev) {
+        ev.stopPropagation();
+        clearTimeout(t._tm);
+        t.hidden = true;
+        onAction();
+      });
+      t.appendChild(b);
+    }
     t.hidden = false;
     clearTimeout(t._tm);
     t._tm = setTimeout(function () { t.hidden = true; }, ms || 1800);
@@ -524,7 +541,11 @@
     if (res.relaxed) showToast('条件に合うお題がないため全お題から抽出しました', 2600);
     else if (res.poolSize < S.settings.pickCount) showToast('抽出対象が ' + res.poolSize + ' 件しかありません', 2200);
   }
-  onEnter.pick = function () { renderPick(); };
+  onEnter.pick = function (opts) {
+    // 戻ってきたときは選択を解除する（同じお題を二重に使用済みにしないため）
+    if (opts && opts.back) game.pickSelected = null;
+    renderPick();
+  };
   function renderPick() {
     var box = $('pick-cards');
     box.innerHTML = '';
@@ -853,18 +874,26 @@
     $('btn-history-trash').addEventListener('click', function () {
       if (!ui.historySelected.length) { showToast('削除するお題を選択してください'); return; }
       var n = ui.historySelected.length;
-      S.deleteHistory(ui.historySelected);     // ポップアップなしで削除
+      var removed = S.deleteHistory(ui.historySelected);   // ポップアップなしで削除
       ui.historySelected = [];
       renderHistory();
-      showToast(n + ' 件を履歴から削除しました');
+      showToast(n + '件を削除しました', 6000, '元に戻す', function () {
+        S.restoreHistory(removed);
+        renderHistory();
+        showToast('削除を取り消しました');
+      });
     });
     $('btn-history-clear').addEventListener('click', function () {
       if (!S.history.length) { showToast('履歴はありません'); return; }
-      confirmDialog('履歴をすべて削除します。よろしいですか？', function () {
-        S.clearHistory();
+      confirmDialog('履歴をすべて削除します。よろしいですか？\n（お題の「使用済み」も解除されます）', function () {
+        var removed = S.clearHistory();
         ui.historySelected = [];
         renderHistory();
-        showToast('履歴をすべて削除しました');
+        showToast('履歴をすべて削除しました', 6000, '元に戻す', function () {
+          S.restoreHistory(removed);
+          renderHistory();
+          showToast('削除を取り消しました');
+        });
       });
     });
 
@@ -927,10 +956,18 @@
           if (!$('modal').hidden) { closeModal(); return; }
           if (!$('forgot-reveal').hidden) { $('forgot-reveal').hidden = true; return; }
           if (nav.current && nav.current !== 'title') { goBack(); return; }
-          if (CapApp.exitApp) CapApp.exitApp();
+          // 終了直前に保存を書き切ってから閉じる
+          try { S.flush(); } catch (e) {}
+          setTimeout(function () { if (CapApp.exitApp) CapApp.exitApp(); }, 180);
         });
       }
     } catch (e) { /* Web では何もしない */ }
+
+    // アプリが背面に回る / 閉じられる直前に保存を確定させる
+    document.addEventListener('visibilitychange', function () {
+      if (document.visibilityState === 'hidden') { try { S.flush(); } catch (e) {} }
+    });
+    window.addEventListener('pagehide', function () { try { S.flush(); } catch (e) {} });
 
     // iOS のピンチ/ダブルタップズーム抑止
     ['gesturestart', 'gesturechange', 'gestureend'].forEach(function (e) {
@@ -973,6 +1010,9 @@
       syncZoomLabel();
       initInstallButton();
       renderAllPlayerInputs();
+      if (S.repaired) {
+        showToast('使用状況を修復しました（' + S.repaired + '件）', 3600);
+      }
       show('title', { resetStack: true });
     }).catch(function (e) {
       // 何があってもタイトルは表示する
